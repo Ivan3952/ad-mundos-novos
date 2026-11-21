@@ -82,6 +82,7 @@
   <h2 id="cname"></h2>
   <div class="author" id="cauthor"></div>
   <div class="group" id="cgroup"></div>
+  <div class="group" id="clocation"></div>
   <div class="desc" id="cdesc"></div>
   <div class="gal" id="cgal"></div>
   <div class="row">
@@ -469,6 +470,86 @@
     galaxy.beginPath(); galaxy.arc(d.x, d.y, d.r * 2.4, 0, 2 * Math.PI); galaxy.fill();
   }
 
+  const planetsById = new Map(P.map(p => [p.id, p]));
+  const landmarks = (G.landmarks || []).map(mark => {
+    const planet = planetsById.get(mark.planet);
+    return { ...mark, x: planet.x + mark.dx, y: planet.y + mark.dy, sprite: makeLandmark(mark) };
+  });
+  const localLandmarks = new Map(landmarks.filter(mark => mark.kind !== "void").map(mark => [mark.planet, mark]));
+
+  function makeLandmark(mark) {
+    const layer = canvasLayer(mark.kind === "void" ? 512 : 256);
+    const half = layer.canvas.width / 2;
+    layer.translate(half, half);
+    layer.scale(half, half);
+    if (mark.kind === "void") {
+      const darkness = layer.createRadialGradient(0, 0, 0.72, 0, 0, 1);
+      darkness.addColorStop(0, "#020108");
+      darkness.addColorStop(1, "rgba(2,1,8,0)");
+      layer.fillStyle = darkness;
+      layer.fillRect(-1, -1, 2, 2);
+    } else if (mark.kind === "black-hole") {
+      glow(layer, 0, 0, 0.97, "rgba(255,116,68,.59)");
+      layer.rotate(-0.34);
+      for (let i = 0; i < 5; i++) {
+        layer.strokeStyle = `rgba(255,${130 + i * 23},84,${0.25 + i * 0.11})`;
+        layer.lineWidth = 0.045;
+        layer.beginPath();
+        layer.ellipse(0, 0, 0.87 - i * 0.09, 0.33 - i * 0.038, 0, 0, 2 * Math.PI);
+        layer.stroke();
+      }
+      layer.fillStyle = "#010106";
+      layer.beginPath(); layer.arc(0, 0, 0.30, 0, 2 * Math.PI); layer.fill();
+      layer.strokeStyle = "#ffcc92";
+      layer.lineWidth = 0.027;
+      layer.beginPath(); layer.ellipse(0, 0.04, 0.46, 0.20, 0, 0, Math.PI); layer.stroke();
+    } else if (mark.kind === "giant") {
+      glow(layer, 0, 0, 0.94, "rgba(211,156,175,.26)");
+      layer.beginPath(); layer.arc(0, 0, 0.67, 0, 2 * Math.PI); layer.clip();
+      layer.fillStyle = mark.color;
+      layer.fillRect(-1, -1, 2, 2);
+      layer.rotate(-0.18);
+      for (let i = 0; i < 7; i++) {
+        layer.fillStyle = i % 2 ? "rgba(255,223,191,.38)" : "rgba(66,58,97,.35)";
+        layer.fillRect(-1, -0.6 + i * 0.18, 2, 0.1);
+      }
+    } else {
+      const stars = mark.companion ? [[-0.32, 0.12, mark.color], [0.34, -0.14, mark.companion]] : [[0, 0, mark.color]];
+      for (const [x, y, color] of stars) {
+        glow(layer, x, y, mark.companion ? 0.59 : 0.97, color);
+        layer.fillStyle = color;
+        layer.beginPath(); layer.arc(x, y, 0.16, 0, 2 * Math.PI); layer.fill();
+      }
+    }
+    return layer.canvas;
+  }
+
+  function drawLandmarks() {
+    const current = P[selected];
+    for (const mark of landmarks) {
+      const [x, y] = toScreen(mark.x, mark.y);
+      const r = mark.radius * cam.z;
+      if (x + r < 0 || x - r > W || y + r < 0 || y - r > H) continue;
+      ctx.globalAlpha = current && mark.planet !== current.id && mark.kind !== "void" ? 0.45 : 1;
+      ctx.drawImage(mark.sprite, x - r, y - r, r * 2, r * 2);
+      if (mark.kind === "black-hole") {
+        const angle = Math.atan2(mark.dy, mark.dx) + Math.PI;
+        ctx.strokeStyle = "rgba(255,189,143,.46)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.hypot(mark.dx, mark.dy) * cam.z, angle - 0.48, angle + 0.48);
+        ctx.stroke();
+      }
+      if (current?.id === mark.planet || (!current && (W >= 600 || r >= 9))) {
+        ctx.fillStyle = mark.kind === "void" ? "#a6a0be" : "#e5d7d2";
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(mark.label, x, y + (mark.kind === "void" ? -r * 0.36 : -r - 5));
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function resize() {
     W = innerWidth; H = innerHeight;
     DPR = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(2304000 / (W * H)));
@@ -481,6 +562,10 @@
   function bounds() {
     let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
     P.forEach(p => { a = Math.min(a, p.x - p.size / 2); b = Math.min(b, p.y - p.size / 2); c = Math.max(c, p.x + p.size / 2); d = Math.max(d, p.y + p.size / 2); });
+    for (const mark of localLandmarks.values()) {
+      a = Math.min(a, mark.x - mark.radius); b = Math.min(b, mark.y - mark.radius);
+      c = Math.max(c, mark.x + mark.radius); d = Math.max(d, mark.y + mark.radius);
+    }
     return { x: (a + c) / 2, y: (b + d) / 2, z: Math.min(W / (c - a + 200), H / (d - b + 200)) };
   }
 
@@ -514,6 +599,8 @@
     if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
       ctx.drawImage(galaxy.canvas, cx - radius, cy - radius, radius * 2, radius * 2);
     }
+
+    drawLandmarks();
 
     // планеты: режим screen делает чёрный фон картинки прозрачным
     P.forEach((p, i) => {
@@ -583,6 +670,7 @@
     if (p.descriptionHtml) cd.innerHTML = p.descriptionHtml;   // очищено при сборке (tools/fetch_articles.py)
     else cd.textContent = p.description || "";
     document.getElementById("cgroup").textContent = (p.featured ? "★ " : "") + (p.group || "");
+    document.getElementById("clocation").textContent = p.location || "";
     const l = document.getElementById("clink");
     l.style.display = p.link ? "" : "none"; l.href = p.link || "#";
     const ar = document.getElementById("cart");
@@ -592,13 +680,19 @@
     shots = [p.cover || p.img, ...(p.gallery || [])];
     shots.forEach((src, k) => { const im = document.createElement("img"); im.src = src; im.loading = "lazy"; im.alt = ""; im.onclick = () => openLb(k); gal.append(im); });
     card.classList.add("open"); hideHint();
-    const mobile = W < 600;
-    // планета встаёт в свободную от карточки часть экрана
-    const cardH = mobile ? card.offsetHeight + 12 : 0;
-    const freeH = H - cardH - 60;
-    const z = mobile ? Math.min(W / (p.size * 1.05), freeH / (p.size * 0.95), MAXZ)
-                     : Math.min(W / (p.size * 1.6), H / (p.size * 1.3), MAXZ);
-    target = { x: p.x + (mobile ? 0 : 200 / z), y: p.y + (mobile ? (H / 2 - (60 + freeH / 2)) / z : 0), z };
+    const mobile = W <= 600;
+    const right = mobile ? W : W - card.offsetWidth - 24;
+    const bottom = mobile ? H - card.offsetHeight - 12 : H;
+    const top = 62;
+    const mark = localLandmarks.get(p.id);
+    const pad = p.size * 0.58;
+    const minX = mark ? Math.min(p.x - pad, mark.x - mark.radius) : p.x - pad;
+    const maxX = mark ? Math.max(p.x + pad, mark.x + mark.radius) : p.x + pad;
+    const minY = mark ? Math.min(p.y - pad, mark.y - mark.radius * 1.3) : p.y - pad;
+    const maxY = mark ? Math.max(p.y + pad + 40, mark.y + mark.radius) : p.y + pad + 40;
+    const z = Math.min((right - 32) / (maxX - minX), Math.max(64, bottom - top - 24) / (maxY - minY), MAXZ);
+    target = { x: (minX + maxX) / 2 + (W - right) / (2 * z),
+      y: (minY + maxY) / 2 + (H - top - bottom) / (2 * z), z };
     history.replaceState(null, "", "#" + p.id);
   }
   let shots = [], lbk = 0;

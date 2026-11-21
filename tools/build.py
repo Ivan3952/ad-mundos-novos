@@ -36,6 +36,7 @@ ARM_TURN = 3.2    # закрутка рукавов, радиан
 # ---------- оформление окрестностей планеты ----------
 ARTICLES = os.path.join(ROOT, "data", "articles")
 EFFECTS = os.path.join(ROOT, "data", "planet-effects.json")
+ATLAS = os.path.join(ROOT, "data", "atlas.json")
 # мотив -> корни слов в названии/описании/статье
 MOTIFS = {
     "bubbles":  ["вод", "океан", "мор", "медуз", "пузыр", "волн", "русал", "сирен", "кракен", "водоросл", "течени"],
@@ -164,6 +165,7 @@ def layout(planets, seed):
                     push = (need - d) / 2 + 0.5
                     ux, uy = dx / d, dy / d
                     fa, fb = id(a) in fixed, id(b) in fixed
+                    if fa and fb: continue
                     ka = 0 if fa else (2 if fb else 1)
                     kb = 0 if fb else (2 if fa else 1)
                     a["x"] -= ux * push * ka; a["y"] -= uy * push * ka
@@ -198,6 +200,8 @@ def main():
     works = json.load(open(WORKS, encoding="utf-8"))
     with open(EFFECTS, encoding="utf-8") as f:
         effects = json.load(f)
+    with open(ATLAS, encoding="utf-8") as f:
+        atlas = json.load(f)
     os.makedirs(IMG, exist_ok=True)
     planets, seen = [], set()
     for w in works:
@@ -235,8 +239,10 @@ def main():
         effect = effects.get(pid, {})
         motifs = effect["motifs"] if "motifs" in effect else w.get("motifs") or motifs_for(text)
         palette = effect.get("palette") or w.get("palette") or palette_for(dst)
+        position = atlas["planets"].get(pid, {})
         planets.append({
-            "id": pid, "img": f"img/{pid}.jpg", "x": w.get("x"), "y": w.get("y"), "size": size,
+            "id": pid, "img": f"img/{pid}.jpg", "x": position.get("x", w.get("x")),
+            "y": position.get("y", w.get("y")), "size": size,
             "name": w.get("name") or "Без названия", "author": w.get("author") or "",
             "link": w.get("link") or "", "article": w.get("article") or "",
             "description": "" if desc_html else (w.get("description") or ""),
@@ -249,6 +255,8 @@ def main():
     arms, extent, groups = layout(planets, args.seed)
     for p in planets:
         p["x"], p["y"] = round(p["x"]), round(p["y"])
+        location = atlas["planets"].get(p["id"], {}).get("location")
+        if location: p["location"] = location
         if p["id"] in effects: p["effect"] = effects[p["id"]]["shape"]
         if not p["featured"]: p.pop("featured")
         if not p["group"]: p.pop("group")
@@ -256,7 +264,10 @@ def main():
         if not p["article"]: p.pop("article")
         if not p["descriptionHtml"]: p.pop("descriptionHtml")
         if not p["description"]: p.pop("description")
-    data = {"title": TITLE, "subtitle": SUBTITLE, "arms": arms, "radius": round(extent), "planets": planets}
+    by_id = {p["id"]: p for p in planets}
+    landmarks = [mark for mark in atlas["landmarks"] if mark["planet"] in by_id]
+    data = {"title": TITLE, "subtitle": SUBTITLE, "arms": arms, "radius": round(extent),
+            "landmarks": landmarks, "planets": planets}
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("// Сгенерировано tools/build.py — правки вносить в data/works.json\n")
         f.write("window.GALAXY = " + json.dumps(data, ensure_ascii=False, indent=2) + ";\n")

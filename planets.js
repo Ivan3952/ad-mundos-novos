@@ -3,13 +3,78 @@ window.GALAXY = {
   "title": "Ad mundos novos",
   "subtitle": "Галактика миров участников",
   "arms": 3,
-  "radius": 2952,
+  "radius": 3974,
+  "landmarks": [
+    {
+      "kind": "black-hole",
+      "label": "Чёрная дыра",
+      "planet": "w217",
+      "dx": -240,
+      "dy": -510,
+      "radius": 205
+    },
+    {
+      "kind": "void",
+      "label": "Пустота Эрии",
+      "planet": "w235",
+      "dx": 0,
+      "dy": 0,
+      "radius": 1250
+    },
+    {
+      "kind": "star",
+      "label": "Лакшми",
+      "planet": "w221",
+      "dx": -340,
+      "dy": -280,
+      "radius": 112,
+      "color": "#fff0ba"
+    },
+    {
+      "kind": "star",
+      "label": "Двойная звезда",
+      "planet": "w215",
+      "dx": -360,
+      "dy": -220,
+      "radius": 110,
+      "color": "#ffd191",
+      "companion": "#8dcaff"
+    },
+    {
+      "kind": "star",
+      "label": "Голубые солнца",
+      "planet": "w225",
+      "dx": 10,
+      "dy": -395,
+      "radius": 107,
+      "color": "#6dc7ff",
+      "companion": "#c5eaff"
+    },
+    {
+      "kind": "star",
+      "label": "Лаурезия",
+      "planet": "w236",
+      "dx": -400,
+      "dy": 310,
+      "radius": 115,
+      "color": "#fff1cd"
+    },
+    {
+      "kind": "giant",
+      "label": "Газовый гигант",
+      "planet": "w237",
+      "dx": 385,
+      "dy": 310,
+      "radius": 145,
+      "color": "#c69da9"
+    }
+  ],
   "planets": [
     {
       "id": "w212",
       "img": "img/w212.jpg",
-      "x": 404,
-      "y": 68,
+      "x": -2290,
+      "y": 530,
       "size": 612,
       "name": "H-0Rr",
       "author": "@AngelsWillDie",
@@ -27,13 +92,14 @@ window.GALAXY = {
         "#758293"
       ],
       "cover": "img/w212/cover.jpg",
+      "location": "Галактика Треугольника (M33) · вдали от звезды",
       "effect": "frost"
     },
     {
       "id": "w213",
       "img": "img/w213.jpg",
-      "x": -513,
-      "y": 357,
+      "x": -1450,
+      "y": 1300,
       "size": 602,
       "name": "Спящая планета",
       "author": "@plucha",
@@ -51,13 +117,14 @@ window.GALAXY = {
         "#9f6b62"
       ],
       "cover": "img/w213/cover.jpg",
+      "location": "Запечатанный искусственный мир",
       "effect": "seal"
     },
     {
       "id": "w214",
       "img": "img/w214.jpg",
-      "x": 134,
-      "y": -695,
+      "x": -540,
+      "y": -1640,
       "size": 543,
       "name": "Агуа Вива",
       "author": "@UwU_baby",
@@ -76,13 +143,14 @@ window.GALAXY = {
         "#9de8d8"
       ],
       "cover": "img/w214/cover.jpg",
+      "location": "За краем звёздных карт",
       "effect": "jellyfish"
     },
     {
       "id": "w215",
       "img": "img/w215.jpg",
-      "x": 406,
-      "y": 759,
+      "x": 1600,
+      "y": -1650,
       "size": 442,
       "name": "Алуна-Верданс",
       "author": "@Xomiakpro444",
@@ -101,13 +169,14 @@ window.GALAXY = {
         "#deaff4"
       ],
       "cover": "img/w215/cover.jpg",
+      "location": "Окраина Лирентиэль · двойная звезда",
       "effect": "aurora"
     },
     {
       "id": "w216",
       "img": "img/w216.jpg",
-      "x": -1080,
-      "y": -304,
+      "x": 450,
+      "y": 450,
       "size": 577,
       "name": "Планета-паразит",
       "author": "@plucha",
@@ -127,13 +196,14 @@ window.GALAXY = {
         "#d9b3f5"
       ],
       "cover": "img/w216/cover.jpg",
+      "location": "Дрейфующий мир-охотник",
       "effect": "grasp"
     },
     {
       "id": "w217",
       "img": "img/w217.jpg",
-      "x": 1171,
-      "y": -382,
+      "x": -2130,
+      "y": -1040,
       "size": 446,
       "name": "Бланета",
       "author": "@F0resight",
@@ -152,13 +222,14 @@ window.GALAXY = {
         "#c8e4ff"
       ],
       "cover": "img/w217/cover.jpg",
+      "location": "Орбита чёрной дыры",
       "effect": "accretion"
     },
     {
       "id": "w218",
       "img": "img/w218.jpg",
-      "x": -392,
-      "y": 1075,
+      "x": 1300,
+      "y": -790,
       "size": 446,
       "name": "Сластения",
       "author": "@Malkov_tt",
@@ -174,13 +245,14 @@ window.GALAXY = {
         "#ffc096"
       ],
       "cover": "img/w218/cover.jpg",
+      "location": "Карамельная Спираль · система красного карлика",
       "effect": "sugar"
     },
     {
       "id": "w219",
       "img": "img/w219.jpg",
-      "x": -614,
-      "y": -1093,
+      "x": 120,
+      "y": -1460,
       "size": 545,
       "name": "Люминара",
       "author": "@Erika_Demons_moon",
@@ -200,13 +272,14 @@ window.GALAXY = {
         "#8498ff"
       ],
       "cover": "img/w219/cover.jpg",
+      "location": "Вне звёздной орбиты",
       "effect": "fractures"
     },
     {
       "id": "w221",
       "img": "img/w221.jpg",
-      "x": 1416,
-      "y": 539,
+      "x": -1050,
+      "y": -370,
       "size": 465,
       "name": "Дионис",
       "author": "@Edward1Mi",
@@ -223,13 +296,14 @@ window.GALAXY = {
         "#ad79da"
       ],
       "cover": "img/w221/cover.jpg",
+      "location": "Система Лакшми",
       "effect": "tides"
     },
     {
       "id": "w222",
       "img": "img/w222.jpg",
-      "x": -1594,
-      "y": 348,
+      "x": -2440,
+      "y": 1300,
       "size": 455,
       "name": "Синклавия",
       "author": "@Benny_Shmidt",
@@ -255,13 +329,14 @@ window.GALAXY = {
         "#88b5fa"
       ],
       "cover": "img/w222/cover.jpg",
+      "location": "Карманная реальность · изолятор",
       "effect": "seams"
     },
     {
       "id": "w223",
       "img": "img/w223.jpg",
-      "x": 770,
-      "y": -1274,
+      "x": 700,
+      "y": -980,
       "size": 555,
       "name": "Кристаллис",
       "author": "@Erika_Demons_moon",
@@ -281,13 +356,14 @@ window.GALAXY = {
         "#dbffff"
       ],
       "cover": "img/w223/cover.jpg",
+      "location": "Пылевое кольцо · запретная зона",
       "effect": "orbits"
     },
     {
       "id": "w224",
       "img": "img/w224.jpg",
-      "x": 516,
-      "y": 1425,
+      "x": 2310,
+      "y": -1180,
       "size": 619,
       "name": "Планета сфер",
       "author": "@Oysis",
@@ -300,13 +376,14 @@ window.GALAXY = {
         "#99d3ff"
       ],
       "cover": "img/w224/cover.jpg",
+      "location": "Край родной галактики",
       "effect": "shells"
     },
     {
       "id": "w225",
       "img": "img/w225.jpg",
-      "x": -1623,
-      "y": -794,
+      "x": -450,
+      "y": -440,
       "size": 518,
       "name": "Водная планета Нереида",
       "author": "@crystalloli",
@@ -329,13 +406,14 @@ window.GALAXY = {
         "#f0abff"
       ],
       "cover": "img/w225/cover.jpg",
+      "location": "Система двух голубых солнц",
       "effect": "orbits"
     },
     {
       "id": "w226",
       "img": "img/w226.jpg",
-      "x": 1963,
-      "y": -43,
+      "x": 1350,
+      "y": -40,
       "size": 512,
       "name": "BNY-9505",
       "author": "@LizsBo",
@@ -362,8 +440,8 @@ window.GALAXY = {
     {
       "id": "w227",
       "img": "img/w227.jpg",
-      "x": -1177,
-      "y": 1361,
+      "x": 1040,
+      "y": 610,
       "size": 584,
       "name": "Кризалис-IV (Сердце Спящего Титана)",
       "author": "@BigBossKan",
@@ -384,13 +462,14 @@ window.GALAXY = {
         "#ffce9f"
       ],
       "cover": "img/w227/cover.jpg",
+      "location": "Мир, выросший вокруг павшего титана",
       "effect": "orbits"
     },
     {
       "id": "w228",
       "img": "img/w228.jpg",
-      "x": -22,
-      "y": -1724,
+      "x": -1970,
+      "y": 1930,
       "size": 611,
       "name": "«Earth»-0011010",
       "author": "@YormiFB",
@@ -413,13 +492,14 @@ window.GALAXY = {
         "#828f9b"
       ],
       "cover": "img/w228/cover.jpg",
+      "location": "Скопление космических обломков",
       "effect": "scrap"
     },
     {
       "id": "w229",
       "img": "img/w229.jpg",
-      "x": 1365,
-      "y": 1364,
+      "x": -25,
+      "y": 80,
       "size": 557,
       "name": "К-Игнея и город Джасперлейн",
       "author": "@LizsBo",
@@ -441,13 +521,14 @@ window.GALAXY = {
         "#fff0ad"
       ],
       "cover": "img/w229/cover.jpg",
+      "location": "Сердце галактики Ксенон-Вега",
       "effect": "signal"
     },
     {
       "id": "w230",
       "img": "img/w230.jpg",
-      "x": -2232,
-      "y": 72,
+      "x": 590,
+      "y": 1160,
       "size": 457,
       "name": "Мицелий-Танатос (Склеп Спор и Древних Костей)",
       "author": "@BigBossKan",
@@ -467,13 +548,14 @@ window.GALAXY = {
         "#a9c491"
       ],
       "cover": "img/w230/cover.jpg",
+      "location": "Мир, проросший грибницей вокруг останков Звёздного Зверя",
       "effect": "branches"
     },
     {
       "id": "w231",
       "img": "img/w231.jpg",
-      "x": 1777,
-      "y": -1193,
+      "x": 1280,
+      "y": 1380,
       "size": 508,
       "name": "Планетоид-Левиафан",
       "author": "@Benny_Shmidt",
@@ -498,13 +580,14 @@ window.GALAXY = {
         "#d8b5ff"
       ],
       "cover": "img/w231/cover.jpg",
+      "location": "Дрейф в межзвёздной пыли и туманностях",
       "effect": "field"
     },
     {
       "id": "w232",
       "img": "img/w232.jpg",
-      "x": -542,
-      "y": 1881,
+      "x": 2130,
+      "y": 1000,
       "size": 613,
       "name": "Планета лесбиянок",
       "author": "@Kuro_niga",
@@ -521,13 +604,14 @@ window.GALAXY = {
         "#ffc2e0"
       ],
       "cover": "img/w232/cover.jpg",
+      "location": "Из мира видна туманность в форме сердца",
       "effect": "heart"
     },
     {
       "id": "w233",
       "img": "img/w233.jpg",
-      "x": -943,
-      "y": -1824,
+      "x": -1530,
+      "y": -1110,
       "size": 567,
       "name": "Планета идей",
       "author": "@yoru_di_lin",
@@ -544,13 +628,14 @@ window.GALAXY = {
         "#a3b7db"
       ],
       "cover": "img/w233/cover.jpg",
+      "location": "Холодный мир без времени",
       "effect": "echo"
     },
     {
       "id": "w234",
       "img": "img/w234.jpg",
-      "x": 2256,
-      "y": 833,
+      "x": 20,
+      "y": 1010,
       "size": 519,
       "name": "Кармия",
       "author": "@SeaDevilTriangleOfTroubles",
@@ -573,13 +658,14 @@ window.GALAXY = {
         "#eac1a0"
       ],
       "cover": "img/w234/cover.jpg",
+      "location": "Система красного карлика",
       "effect": "branches"
     },
     {
       "id": "w235",
       "img": "img/w235.jpg",
-      "x": -2278,
-      "y": 904,
+      "x": 3710,
+      "y": -80,
       "size": 527,
       "name": "Эрия",
       "author": "@r14142rsws21421",
@@ -598,13 +684,14 @@ window.GALAXY = {
         "#c3a8f4"
       ],
       "cover": "img/w235/cover.jpg",
+      "location": "Умирающая Вселенная Эрия · за Вуалью пустота",
       "effect": "veil"
     },
     {
       "id": "w236",
       "img": "img/w236.jpg",
-      "x": 1021,
-      "y": -1949,
+      "x": 20,
+      "y": 1620,
       "size": 475,
       "name": "Джанн, мир Телесности, мир Космической Плоти",
       "author": "@ian_braindonor",
@@ -626,13 +713,14 @@ window.GALAXY = {
         "#caa1e5"
       ],
       "cover": "img/w236/cover.jpg",
+      "location": "Парсектор Бета Святого · Лаурезия-4",
       "effect": "field"
     },
     {
       "id": "w237",
       "img": "img/w237.jpg",
-      "x": 1211,
-      "y": 1944,
+      "x": 2120,
+      "y": 160,
       "size": 597,
       "name": "Резонария",
       "author": "@SeaDevilTriangleOfTroubles",
@@ -654,13 +742,14 @@ window.GALAXY = {
         "#ff88ae"
       ],
       "cover": "img/w237/cover.jpg",
+      "location": "Орбита, общая с газовым гигантом",
       "effect": "signal"
     },
     {
       "id": "w238",
       "img": "img/w238.jpg",
-      "x": -2240,
-      "y": -1228,
+      "x": -760,
+      "y": 1220,
       "size": 508,
       "name": "Пангиалиний, город внутри Стеклянной Планеты",
       "author": "@ian_braindonor",
@@ -677,13 +766,14 @@ window.GALAXY = {
         "#ffe9ad"
       ],
       "cover": "img/w238/cover.jpg",
+      "location": "Город внутри стеклянной сферы",
       "effect": "glass"
     },
     {
       "id": "w239",
       "img": "img/w239.jpg",
-      "x": 2605,
-      "y": -712,
+      "x": -1140,
+      "y": 310,
       "size": 503,
       "name": "Талассар",
       "author": "@Missambi",
@@ -704,13 +794,14 @@ window.GALAXY = {
         "#a5ffe0"
       ],
       "cover": "img/w239/cover.jpg",
+      "location": "Отдельная система водных миров",
       "effect": "shells"
     },
     {
       "id": "w240",
       "img": "img/w240.jpg",
-      "x": -1134,
-      "y": 2097,
+      "x": -1260,
+      "y": 2020,
       "size": 486,
       "name": "Андрос - мир золотой клетки",
       "author": "@Missambi",
@@ -730,6 +821,7 @@ window.GALAXY = {
         "#a77bff"
       ],
       "cover": "img/w240/cover.jpg",
+      "location": "За пределами Солнечной системы",
       "effect": "circuits"
     }
   ]
