@@ -147,8 +147,6 @@
 </div>
 <div class="world-picker">
   <details id="tour-picker"><summary>Экскурсии</summary><div id="tour-list"></div></details>
-  <label for="universe-picker">Вселенные авторов</label>
-  <select id="universe-picker"><option value="">Общий атлас</option></select>
   <label for="world-picker">Планеты</label>
   <select id="world-picker"><option value="">Вся галактика</option></select>
 </div>
@@ -195,21 +193,9 @@
   let needsDraw = true, animated = false;
   const lastFrame = {};
   const MAXZ = 3;
-  const universeLayouts = {
-    lizsbo: { w226: [-880, 430], w229: [0, -450], w245: [920, 390] },
-  };
-  const atlasPositions = P.map(({ x, y }) => ({ x, y }));
-  let universe = null;
-  let visibleIndexes = P.map((_, i) => i);
-  const isVisible = i => !universe || universe.positionsByIndex.has(i);
 
   // --- загрузка картинок
-  function loadWorldImage(p) {
-    if (p.im) return;
-    p.im = new Image();
-    p.im.onload = () => { p.ready = true; needsDraw = true; };
-    p.im.src = p.img;
-  }
+  P.forEach(p => { p.im = new Image(); p.im.onload = () => { p.ready = true; needsDraw = true; }; p.im.src = p.img; });
 
   // --- оформление окрестностей: свечение в цветах планеты + частицы по мотивам из описания
   const hexRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -766,15 +752,9 @@
   function drawLandmarks() {
     const current = P[selected];
     const local = cam.z >= Math.max(current ? 0 : 0.14, bounds().z * 1.65);
-    const mode = universe?.worlds.has("w235") && universe.worlds.size === 1
-      ? "За Вуалью Звёзд — пустота"
-      : local ? "Локальная карта · ориентиры с пояснениями" : "Общий план · приблизьте карту";
+    const mode = local ? "Локальная карта · ориентиры с пояснениями" : "Общий план · приблизьте карту";
     if (mapMode.textContent !== mode) mapMode.textContent = mode;
     for (const mark of landmarks) {
-      if (universe && !universe.worlds.has(mark.planet)) {
-        mark.button.hidden = true;
-        continue;
-      }
       const [x, y] = toScreen(mark.x, mark.y);
       const r = mark.radius * cam.z;
       const voidRegion = mark.kind === "void";
@@ -785,7 +765,7 @@
         mark.button.style.left = x + "px";
         mark.button.style.top = labelY + "px";
       } else if (openMark === mark.button) dismissNote();
-      if ((!show && !voidRegion) || (universe && voidRegion)) continue;
+      if (!show && !voidRegion) continue;
       if (x + r < 0 || x - r > W || y + r < 0 || y - r > H) continue;
       ctx.drawImage(mark.sprite, x - r, y - r, r * 2, r * 2);
       if (mark.kind === "black-hole") {
@@ -812,18 +792,12 @@
 
   function bounds() {
     let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
-    for (const i of visibleIndexes) {
-      const p = P[i];
-      a = Math.min(a, p.x - p.size / 2); b = Math.min(b, p.y - p.size / 2);
-      c = Math.max(c, p.x + p.size / 2); d = Math.max(d, p.y + p.size / 2);
-    }
+    P.forEach(p => { a = Math.min(a, p.x - p.size / 2); b = Math.min(b, p.y - p.size / 2); c = Math.max(c, p.x + p.size / 2); d = Math.max(d, p.y + p.size / 2); });
     for (const mark of localLandmarks.values()) {
-      if (universe && !universe.worlds.has(mark.planet)) continue;
       a = Math.min(a, mark.x - mark.radius); b = Math.min(b, mark.y - mark.radius);
       c = Math.max(c, mark.x + mark.radius); d = Math.max(d, mark.y + mark.radius);
     }
-    const padding = universe ? 360 : 200;
-    return { x: (a + c) / 2, y: (b + d) / 2, z: Math.min(MAXZ, W / (c - a + padding), H / (d - b + padding)) };
+    return { x: (a + c) / 2, y: (b + d) / 2, z: Math.min(W / (c - a + 200), H / (d - b + 200)) };
   }
 
   const arrival = document.getElementById("arrival");
@@ -900,6 +874,7 @@
     ctx.globalAlpha = 1;
   }
 
+  // --- отрисовка
   function drawBackdrop(image, x, y, side) {
     const left = Math.max(0, x), top = Math.max(0, y);
     const width = Math.min(W, x + side) - left, height = Math.min(H, y + side) - top;
@@ -909,7 +884,6 @@
       width * scale, height * scale, left, top, width, height);
   }
 
-  // --- отрисовка
   function draw(time) {
     requestAnimationFrame(draw);
     let progress = 1;
@@ -946,7 +920,7 @@
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "#020108"; ctx.fillRect(0, 0, W, H);
 
-    for (const layer of universe ? [] : layers) {
+    for (const layer of layers) {
       const x = ((-cam.x * cam.z * layer.par) % TILE + TILE) % TILE - TILE;
       const y = ((-cam.y * cam.z * layer.par) % TILE + TILE) % TILE - TILE;
       for (let tx = x; tx < W; tx += TILE) for (let ty = y; ty < H; ty += TILE) {
@@ -956,17 +930,13 @@
     const [cx, cy] = toScreen(0, 0);
     const radius = galaxyRadius * cam.z;
     if (deepField) drawDeepField(progress, cx, cy);
-    if (universe?.sky) {
-      const span = universe.sky.radius * cam.z;
-      ctx.globalAlpha = selected < 0 ? 1 : 0.65;
-      drawBackdrop(universe.sky.image, cx - span, cy - span, span * 2);
-    } else if (!universe) {
+    if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
       ctx.globalAlpha = selected < 0 ? 1 : 0.48;
       drawBackdrop(galaxy.canvas, cx - radius, cy - radius, radius * 2);
     }
     const coreSize = coreRadius * cam.z;
     const coreFade = Math.min(1, Math.max(0, (0.24 - cam.z) / 0.15));
-    if (!universe && coreFade > 0 && cx + coreSize > 0 && cx - coreSize < W && cy + coreSize > 0 && cy - coreSize < H) {
+    if (coreFade > 0 && cx + coreSize > 0 && cx - coreSize < W && cy + coreSize > 0 && cy - coreSize < H) {
       ctx.globalAlpha = coreFade * coreFade * (selected < 0 ? 1 : 0.24);
       ctx.globalCompositeOperation = "lighter";
       ctx.drawImage(core.canvas, cx - coreSize, cy - coreSize, coreSize * 2, coreSize * 2);
@@ -978,13 +948,12 @@
     if (!deepField) drawLandmarks();
 
     // планеты: режим screen делает чёрный фон картинки прозрачным
-    for (const i of visibleIndexes) {
-      const p = P[i];
-      if (!p.ready) continue;
+    P.forEach((p, i) => {
+      if (!p.ready) return;
       const [sx, sy] = toScreen(p.x, p.y);
       const w = p.size * cam.z, h = w * p.im.naturalHeight / p.im.naturalWidth;
       const extent = 4 / 3 * Math.max(w, h);
-      if (sx + extent < 0 || sx - extent > W || sy + extent < 0 || sy - extent > H) continue;
+      if (sx + extent < 0 || sx - extent > W || sy + extent < 0 || sy - extent > H) return;
       const fxA = Math.min(1, Math.max(0, (w - 100) / 150));
       const halo = w * 4 / 3;
       ctx.globalCompositeOperation = "lighter";
@@ -1032,14 +1001,13 @@
         if (act || cam.z > 0.5) { ctx.fillStyle = "#9a93b8"; ctx.font = "12px 'Segoe UI', system-ui, sans-serif"; ctx.fillText(p.author, sx, ly + 16); }
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
-    }
+    });
   }
 
   function hit(sx, sy) {
     const [wx, wy] = toWorld(sx, sy);
     let best = -1, bd = Infinity;
     P.forEach((p, i) => {
-      if (!isVisible(i)) return;
       const d = Math.hypot(wx - p.x, wy - p.y);
       if (d < p.size * 0.42 && d < bd) { bd = d; best = i; }
     });
@@ -1049,7 +1017,6 @@
   // --- карточка
   const card = document.getElementById("card");
   const picker = document.getElementById("world-picker");
-  const universePicker = document.getElementById("universe-picker");
   const tours = [
     { title: "За пределами звёздных систем", stops: [
       ["w214", "За краем звёздных карт дрейфует планета-медуза, под золотым куполом которой живут тысячи видов."],
@@ -1103,104 +1070,9 @@
   };
   document.getElementById("tour-exit").onclick = finishTour;
   const cover = document.getElementById("ccover");
-  const authorWorlds = new Map();
-  P.forEach((p, i) => {
-    for (const author of new Set(p.author.match(/@\w+/g) || [])) {
-      const id = author.slice(1).toLowerCase();
-      if (!authorWorlds.has(id)) authorWorlds.set(id, { id, author, indexes: [] });
-      const indexes = authorWorlds.get(id).indexes;
-      if (!indexes.includes(i)) indexes.push(i);
-    }
-  });
-  const universes = new Map([...authorWorlds].sort(([, a], [, b]) => a.author.localeCompare(b.author)));
-  for (const scene of universes.values()) {
-    const { id, author, indexes } = scene;
-    scene.positionsByIndex = new Map(indexes.map((i, j) => {
-      const p = P[i];
-      const angle = j * 2 * Math.PI / indexes.length - Math.PI / 2;
-      const radius = indexes.length === 1 ? 0 : indexes.length === 2 ? 590 : 780;
-      const [x, y] = universeLayouts[id]?.[p.id] || [Math.cos(angle) * radius, Math.sin(angle) * radius];
-      return [i, { x, y }];
-    }));
-    scene.worlds = new Set(indexes.map(i => P[i].id));
-    universePicker.add(new Option(author, id));
-  }
-
-  // Paint each world's atmosphere separately. The space between them carries no shared lore.
-  function skyFor(scene) {
-    if (scene.worlds.size === 1 && scene.worlds.has("w235")) return null;
-    const radius = 2150;
-    const sky = canvasLayer(512);
-    sky.translate(256, 256);
-    sky.scale(256 / radius, 256 / radius);
-    for (const [i, { x, y }] of scene.positionsByIndex) {
-      const p = P[i];
-      if (p.id === "w235") continue;
-      const [base, light = base] = p.pal;
-      const random = mulberry((i + 1) * 2213);
-      const isRift = ["fractures", "accretion", "obsidian", "seams"].includes(p.effect);
-      const isWater = ["tides", "ponds", "shells"].includes(p.effect);
-      const span = isWater ? 980 : 820;
-      sky.save();
-      sky.translate(x, y);
-      sky.rotate(isRift ? -0.44 : isWater ? 0.14 : -0.2);
-      sky.scale(1, isRift ? 0.42 : isWater ? 0.82 : 0.61);
-      glow(sky, 0, 0, span, rgba(base, 0.30));
-      glow(sky, -260, -110, span * 0.64, rgba(light, 0.19));
-      if (isRift) glow(sky, 270, 100, 330, rgba(base, 0.28));
-      for (let k = 0; k < 50; k++) {
-        const angle = random() * Math.PI * 2;
-        const distance = Math.sqrt(random()) * span;
-        sky.fillStyle = rgba(k % 4 ? light : base, 0.27 * (1 - distance / span));
-        sky.fillRect(Math.cos(angle) * distance, Math.sin(angle) * distance, 4 + random() * 12, 4);
-      }
-      sky.restore();
-    }
-    return { image: sky.canvas, radius };
-  }
-  function updateWorldPicker() {
-    picker.replaceChildren(new Option(universe ? "Все миры автора" : "Вся галактика", ""));
-    [...visibleIndexes].sort((a, b) => P[a].name.localeCompare(P[b].name, "ru"))
-      .forEach(i => picker.add(new Option(P[i].name, i)));
-  }
-  function setUniverse(id) {
-    universe = universes.get(id) || null;
-    visibleIndexes = universe ? [...universe.positionsByIndex.keys()] : P.map((_, i) => i);
-    if (universe && universe.sky === undefined) universe.sky = skyFor(universe);
-    P.forEach((p, i) => Object.assign(p, universe?.positionsByIndex.get(i) || atlasPositions[i]));
-    for (const i of visibleIndexes) loadWorldImage(P[i]);
-    for (const mark of landmarks) {
-      const p = planetsById.get(mark.planet);
-      mark.x = p.x + mark.dx;
-      mark.y = p.y + mark.dy;
-    }
-    universePicker.value = universe?.id || "";
-    document.getElementById("st").textContent = universe ? "Вселенная " + universe.author : G.subtitle;
-    tourPicker.hidden = !!universe;
-    hovered = -1;
-    updateWorldPicker();
-    needsDraw = true;
-  }
-  universePicker.onchange = () => {
-    setUniverse(universePicker.value);
-    const view = bounds();
-    Object.assign(cam, view, { z: reducedMotion.matches ? view.z : view.z * 0.72 });
-    if (universe && visibleIndexes.length === 1) select(visibleIndexes[0]);
-    else { select(-1); target = view; }
-  };
-  function showRoute(initial = false) {
-    const [id, universeId, universePlanet] = location.hash.slice(1).split("/");
-    setUniverse(id === "universe" ? universeId : "");
-    const planetId = id === "universe" ? universePlanet : id;
-    const index = visibleIndexes.find(i => P[i].id === planetId);
-    select(index ?? -1);
-    if (index === undefined) target = bounds();
-    if (initial || reducedMotion.matches) {
-      Object.assign(cam, target);
-      target = null;
-    }
-  }
-  updateWorldPicker();
+  P.map((planet, index) => ({ name: planet.name, index }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+    .forEach(({ name, index }) => picker.add(new Option(name, index)));
   picker.onchange = () => {
     if (picker.value === "") document.getElementById("home").click();
     else select(Number(picker.value));
@@ -1212,13 +1084,7 @@
     dismissNote();
     selected = i;
     picker.value = i < 0 ? "" : String(i);
-    const rootHash = universe ? "#universe/" + universe.id : "";
-    if (i < 0) {
-      card.classList.remove("open");
-      history.replaceState(null, "", rootHash || location.pathname + location.search);
-      needsDraw = true;
-      return;
-    }
+    if (i < 0) { card.classList.remove("open"); history.replaceState(null, "", location.pathname); return; }
     const p = P[i];
     document.getElementById("cname").textContent = p.name;
     card.style.setProperty("--world-accent", p.palette?.[0] || "#d9c6ff");
@@ -1254,7 +1120,7 @@
     const z = Math.min((right - 32) / (maxX - minX), Math.max(64, bottom - top - 24) / (maxY - minY), MAXZ);
     target = { x: (minX + maxX) / 2 + (W - right) / (2 * z),
       y: (minY + maxY) / 2 + (H - top - bottom) / (2 * z), z };
-    history.replaceState(null, "", rootHash ? rootHash + "/" + p.id : "#" + p.id);
+    history.replaceState(null, "", "#" + p.id);
   }
   let shots = [], lbk = 0;
   const lb = document.getElementById("lb"), lbi = document.getElementById("lbi");
@@ -1266,13 +1132,8 @@
   document.getElementById("lbn").onclick = e => { e.stopPropagation(); openLb(lbk + 1); };
   lb.onclick = e => { if (e.target === lb) closeLb(); };
   document.getElementById("cclose").onclick = () => select(-1);
-  function stepWorld(direction) {
-    const position = visibleIndexes.indexOf(selected);
-    const count = visibleIndexes.length;
-    select(visibleIndexes[(position + direction + count) % count]);
-  }
-  document.getElementById("prev").onclick = () => stepWorld(-1);
-  document.getElementById("next").onclick = () => stepWorld(1);
+  document.getElementById("prev").onclick = () => select((selected - 1 + P.length) % P.length);
+  document.getElementById("next").onclick = () => select((selected + 1) % P.length);
   document.getElementById("home").onclick = () => { select(-1); target = bounds(); };
   const zoomBy = (f, sx = W / 2, sy = H / 2) => {
     target = null;
@@ -1333,7 +1194,7 @@
   addEventListener("keydown", e => {
     if (deepField && e.key === "Escape") { finishArrival(); return; }
     if (e.key === "Escape" && !landmarkNote.hidden) { dismissNote(true); return; }
-    if (e.target === picker || e.target === universePicker) return;
+    if (e.target === picker) return;
     if (lb.classList.contains("open")) {
       if (e.key === "Escape") closeLb();
       if (e.key === "ArrowRight") openLb(lbk + 1);
@@ -1341,17 +1202,30 @@
       return;
     }
     if (e.key === "Escape") select(-1);
-    if (e.key === "ArrowRight" && selected >= 0) stepWorld(1);
-    if (e.key === "ArrowLeft" && selected >= 0) stepWorld(-1);
+    if (e.key === "ArrowRight" && selected >= 0) select((selected + 1) % P.length);
+    if (e.key === "ArrowLeft" && selected >= 0) select((selected - 1 + P.length) % P.length);
   });
   addEventListener("resize", resize);
-  addEventListener("hashchange", () => { if (deepField) finishArrival(); showRoute(); });
+  function openLinkedWorld(initial = false) {
+    const fragment = location.hash.slice(1);
+    const legacy = fragment.startsWith("universe/");
+    const id = legacy ? fragment.split("/")[2] : fragment;
+    const index = P.findIndex(p => p.id === id);
+    if (!legacy && index < 0) return false;
+    if (deepField) finishArrival();
+    select(index);
+    if (index < 0) target = bounds();
+    if (initial || reducedMotion.matches) {
+      Object.assign(cam, target);
+      target = null;
+    }
+    return true;
+  }
+  addEventListener("hashchange", () => openLinkedWorld());
 
   resize();
   Object.assign(cam, bounds());
-  if (location.hash) showRoute(true);
-  else for (const i of visibleIndexes) loadWorldImage(P[i]);
-  if (!location.hash && !reducedMotion.matches) {
+  if (!openLinkedWorld(true) && !location.hash && !reducedMotion.matches) {
     deepField = makeDeepField();
     arrival.hidden = false;
     document.body.classList.add("arriving");
