@@ -111,6 +111,18 @@
   #landmark-note h2 { margin:0 26px 6px 0; font:22px Georgia,serif; }
   #landmark-note p { margin:0; font:13px/1.5 system-ui; }
   #landmark-close { position:absolute; top:8px; right:9px; color:inherit; background:none; border:0; font-size:24px; cursor:pointer; }
+
+  #tour-picker { font-size:13px; }
+  #tour-picker summary { cursor:pointer; color:var(--fg); background:#10111e; border:1px solid #3e394e; border-radius:8px; padding:10px 12px; }
+  #tour-list { display:grid; gap:4px; margin-top:5px; padding:5px; background:#10111e; border:1px solid #3e394e; border-radius:8px; }
+  #tour-list button, #tour-stop button { cursor:pointer; border:1px solid #51465d; border-radius:6px; padding:8px; background:#1d192a; color:var(--fg); font:inherit; }
+  #tour-list button { text-align:left; }
+  #tour-list button:hover, #tour-stop button:hover { border-color:var(--accent); }
+  #tour-stop { flex:none; padding:9px 10px; margin-top:8px; background:#171422; border-left:2px solid var(--world-accent); font-size:12px; line-height:1.35; }
+  #tour-stop p { margin:5px 0 7px; }
+  #tour-position { color:var(--world-accent); }
+  #tour-stop .tour-actions { display:flex; gap:6px; }
+  @media(max-height:650px) { #card:has(#tour-stop:not([hidden])) .cover { display:none; } }
 </style>
 </head>
 <body>
@@ -126,7 +138,11 @@
   <button id="zout" title="Отдалить">−</button>
   <button id="home" title="Вся галактика">◎</button>
 </div>
-<label class="world-picker">Планеты<select id="world-picker"><option value="">Вся галактика</option></select></label>
+<div class="world-picker">
+  <details id="tour-picker"><summary>Экскурсии</summary><div id="tour-list"></div></details>
+  <label for="world-picker">Планеты</label>
+  <select id="world-picker"><option value="">Вся галактика</option></select>
+</div>
 <div id="card">
   <button class="cover" id="ccover" type="button" aria-label="Открыть иллюстрацию планеты"></button>
   <button class="close" id="cclose">×</button>
@@ -134,6 +150,14 @@
   <div class="author" id="cauthor"></div>
   <div class="group" id="cgroup"></div>
   <div class="group" id="clocation"></div>
+  <section id="tour-stop" aria-label="Остановка экскурсии" hidden>
+    <strong id="tour-position"></strong>
+    <p id="tour-lore"></p>
+    <div class="tour-actions">
+      <button id="tour-next" type="button">Дальше</button>
+      <button id="tour-exit" type="button">Выйти из экскурсии</button>
+    </div>
+  </section>
   <div class="desc" id="cdesc"></div>
   <div class="gal" id="cgal"></div>
   <div class="row">
@@ -817,6 +841,58 @@
   // --- карточка
   const card = document.getElementById("card");
   const picker = document.getElementById("world-picker");
+  const tours = [
+    { title: "За пределами звёздных систем", stops: [
+      ["w214", "За краем звёздных карт дрейфует планета-медуза, под золотым куполом которой живут тысячи видов."],
+      ["w219", "Люминара собрана из застывшего света. Её освещает эфир, просачивающийся сквозь трещины коры."],
+      ["w235", "Эрия — последняя планета умирающей Вселенной. Вуаль Звёзд дарит ей тепло и видимость звёздного неба."]
+    ] },
+    { title: "Живые миры", stops: [
+      ["w216", "Планета-паразит поджидает пролетающие корабли и существ, чтобы схватить их щупальцами."],
+      ["w234", "Кармия выросла из фрагмента плоти, оказавшегося в космосе после взрыва исследовательской ракеты."],
+      ["w227", "Сердце павшего космического титана стало ядром Кризалиса-IV и до сих пор бьётся."]
+    ] }
+  ];
+  const tourPicker = document.getElementById("tour-picker");
+  const tourList = document.getElementById("tour-list");
+  const tourPanel = document.getElementById("tour-stop");
+  const tourNext = document.getElementById("tour-next");
+  let activeTour = null, stopIndex = 0;
+  function endTour() {
+    activeTour = null;
+    tourPanel.hidden = true;
+  }
+  function visitStop() {
+    const [id, lore] = activeTour.stops[stopIndex];
+    document.getElementById("tour-position").textContent = activeTour.title + " · " + (stopIndex + 1) + " / " + activeTour.stops.length;
+    document.getElementById("tour-lore").textContent = lore;
+    tourNext.textContent = stopIndex + 1 === activeTour.stops.length ? "Завершить" : "Дальше";
+    tourPanel.hidden = false;
+    select(P.findIndex(p => p.id === id), true);
+    tourNext.focus({ preventScroll: true });
+  }
+  for (const tour of tours) {
+    if (!tour.stops.every(([id]) => planetsById.has(id))) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = tour.title;
+    button.onclick = () => {
+      activeTour = tour;
+      stopIndex = 0;
+      tourPicker.open = false;
+      visitStop();
+    };
+    tourList.append(button);
+  }
+  function finishTour() {
+    endTour();
+    document.getElementById("cclose").focus({ preventScroll: true });
+  }
+  tourNext.onclick = () => {
+    if (++stopIndex === activeTour.stops.length) finishTour();
+    else visitStop();
+  };
+  document.getElementById("tour-exit").onclick = finishTour;
   const cover = document.getElementById("ccover");
   P.map((planet, index) => ({ name: planet.name, index }))
     .sort((a, b) => a.name.localeCompare(b.name, "ru"))
@@ -827,7 +903,8 @@
   };
   const hint = document.getElementById("hint");
   const hideHint = () => { hint.style.opacity = 0; };
-  function select(i) {
+  function select(i, onTour = false) {
+    if (!onTour) endTour();
     dismissNote();
     selected = i;
     picker.value = i < 0 ? "" : String(i);
