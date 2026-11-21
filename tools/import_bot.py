@@ -104,9 +104,10 @@ def main():
             "id": f"w{wid}", "file": files[cover],
             "gallery": [f for i, f in enumerate(files) if i != cover],
             "name": name or "Без названия", "author": author or "",
-            "description": ov.get("description", text), "link": link or "", "article": article or "",
+            "description": ov.get("description", text), "descriptionLocked": "description" in ov,
+            "link": link or "", "article": article or "",
             "group": ov.get("group", ""), "featured": bool(ov.get("featured")),
-            **{k: ov[k] for k in ("x", "y", "size") if k in ov},
+            **{k: ov[k] for k in ("x", "y", "size", "motifs", "palette") if k in ov},
         })
     os.makedirs(os.path.dirname(WORKS), exist_ok=True)
     json.dump(works, open(WORKS, "w", encoding="utf-8"), ensure_ascii=False, indent=2)

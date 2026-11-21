@@ -18,6 +18,14 @@ window.GALAXY = {
       "gallery": [
         "img/w212/0.jpg"
       ],
+      "motifs": [
+        "snow",
+        "debris"
+      ],
+      "palette": [
+        "#6c80ab",
+        "#b0b5cd"
+      ],
       "cover": "img/w212/cover.jpg"
     },
     {
@@ -36,6 +44,15 @@ window.GALAXY = {
         "img/w213/2.jpg",
         "img/w213/3.jpg"
       ],
+      "motifs": [
+        "embers",
+        "sparkles"
+      ],
+      "palette": [
+        "#eead78",
+        "#b58162",
+        "#696faf"
+      ],
       "cover": "img/w213/cover.jpg"
     },
     {
@@ -51,6 +68,15 @@ window.GALAXY = {
       "gallery": [
         "img/w214/0.jpg",
         "img/w214/1.jpg"
+      ],
+      "motifs": [
+        "bubbles",
+        "sparkles"
+      ],
+      "palette": [
+        "#cc9d70",
+        "#5475c4",
+        "#a86f9d"
       ],
       "cover": "img/w214/cover.jpg"
     },
@@ -70,6 +96,15 @@ window.GALAXY = {
         "img/w215/2.jpg",
         "img/w215/3.jpg"
       ],
+      "motifs": [
+        "crystals",
+        "sparkles"
+      ],
+      "palette": [
+        "#7585da",
+        "#83dbfb",
+        "#494fcf"
+      ],
       "cover": "img/w215/cover.jpg"
     },
     {
@@ -88,6 +123,13 @@ window.GALAXY = {
         "img/w216/2.jpg",
         "img/w216/3.jpg"
       ],
+      "motifs": [
+        "tendrils",
+        "spores"
+      ],
+      "palette": [
+        "#5a6cbd"
+      ],
       "cover": "img/w216/cover.jpg"
     },
     {
@@ -104,6 +146,14 @@ window.GALAXY = {
         "img/w217/0.jpg",
         "img/w217/1.jpg"
       ],
+      "motifs": [
+        "snow",
+        "sparkles"
+      ],
+      "palette": [
+        "#9379b2",
+        "#d0aad3"
+      ],
       "cover": "img/w217/cover.jpg"
     },
     {
@@ -116,6 +166,13 @@ window.GALAXY = {
       "author": "@Malkov_tt",
       "link": "https://t.me/StableWaifuComments/19259245",
       "description": "идеальная сфера из спрессованной сахарной ваты, вращающаяся вокруг пульсирующего красного карлика в галактике «Карамельная Спираль». Планета не тает благодаря раскалённому карамельному ядру, а низкая гравитация создаёт атмосферу из сахарной пыли с сиропными дождями и светящимся эффектом зефира.\n\nЖизнь здесь удивительна: разумные Прядильщики (пушистые пауки с 6 лапами) плетут из ваты висячие города. Зефирные мотыльки питаются сахарной пылью, а кристаллические жуки строят гнёзда из леденцов, в то время как гигантские кристаллы сахара служат маяками для обитателей.",
+      "motifs": [
+        "sparkles",
+        "snow"
+      ],
+      "palette": [
+        "#d44475"
+      ],
       "cover": "img/w218/cover.jpg"
     },
     {
@@ -133,6 +190,13 @@ window.GALAXY = {
         "img/w219/1.jpg",
         "img/w219/2.jpg"
       ],
+      "motifs": [
+        "sparkles",
+        "spores"
+      ],
+      "palette": [
+        "#19fff8"
+      ],
       "cover": "img/w219/cover.jpg"
     },
     {
@@ -145,10 +209,17 @@ window.GALAXY = {
       "author": "@Edward1Mi",
       "link": "https://t.me/StableWaifuComments/19273906",
       "article": "https://melcherry.pub/dionis-17-11",
-      "description": "",
       "gallery": [
         "img/w221/0.jpg",
         "img/w221/1.jpg"
+      ],
+      "motifs": [
+        "bubbles",
+        "spores"
+      ],
+      "palette": [
+        "#59fff5",
+        "#1ac3fe"
       ],
       "cover": "img/w221/cover.jpg"
     },
@@ -162,7 +233,6 @@ window.GALAXY = {
       "author": "@Benny_Shmidt",
       "link": "https://t.me/StableWaifuComments/19274158",
       "article": "https://meloncherry.space/sinklaviya-17-11",
-      "description": "",
       "gallery": [
         "img/w222/0.jpg",
         "img/w222/1.jpg",
@@ -172,6 +242,15 @@ window.GALAXY = {
         "img/w222/5.jpg",
         "img/w222/6.jpg",
         "img/w222/7.jpg"
+      ],
+      "motifs": [
+        "debris",
+        "sparkles"
+      ],
+      "palette": [
+        "#ff4519",
+        "#f69122",
+        "#cac54d"
       ],
       "cover": "img/w222/cover.jpg"
     },
@@ -190,6 +269,13 @@ window.GALAXY = {
         "img/w223/1.jpg",
         "img/w223/2.jpg"
       ],
+      "motifs": [
+        "crystals",
+        "sparkles"
+      ],
+      "palette": [
+        "#4f9fc8"
+      ],
       "cover": "img/w223/cover.jpg"
     },
     {
@@ -203,6 +289,14 @@ window.GALAXY = {
       "link": "https://t.me/StableWaifuComments/19275589",
       "article": "https://melcherry.pub/opisanie-planety-sfer-18-11",
       "description": "Я не собиралась статью делать но ушла в лимиты телеги, так что пришлось🌸",
+      "motifs": [
+        "rings",
+        "sparkles"
+      ],
+      "palette": [
+        "#7f93ff",
+        "#8873a4"
+      ],
       "cover": "img/w224/cover.jpg"
     },
     {
@@ -215,13 +309,19 @@ window.GALAXY = {
       "author": "@crystalloli",
       "link": "https://t.me/StableWaifuComments/19276440",
       "article": "https://meloncherry.space/nereida-18-11",
-      "description": "",
       "gallery": [
         "img/w225/0.jpg",
         "img/w225/1.jpg",
         "img/w225/2.jpg",
         "img/w225/3.jpg",
         "img/w225/4.jpg"
+      ],
+      "motifs": [
+        "bubbles",
+        "crystals"
+      ],
+      "palette": [
+        "#2b7cec"
       ],
       "cover": "img/w225/cover.jpg"
     },
@@ -241,6 +341,15 @@ window.GALAXY = {
         "img/w226/1.jpg",
         "img/w226/2.jpg"
       ],
+      "motifs": [
+        "sparkles",
+        "petals"
+      ],
+      "palette": [
+        "#5571c3",
+        "#e896be",
+        "#a7d6c8"
+      ],
       "cover": "img/w226/cover.jpg"
     },
     {
@@ -257,6 +366,14 @@ window.GALAXY = {
         "img/w227/0.jpg",
         "img/w227/1.jpg",
         "img/w227/2.jpg"
+      ],
+      "motifs": [
+        "tendrils",
+        "debris"
+      ],
+      "palette": [
+        "#ae7d6a",
+        "#d9433f"
       ],
       "cover": "img/w227/cover.jpg"
     },
@@ -277,6 +394,14 @@ window.GALAXY = {
         "img/w228/3.jpg",
         "img/w228/4.jpg"
       ],
+      "motifs": [
+        "glitch",
+        "debris"
+      ],
+      "palette": [
+        "#f54d23",
+        "#c8de3a"
+      ],
       "cover": "img/w228/cover.jpg"
     },
     {
@@ -296,6 +421,15 @@ window.GALAXY = {
         "img/w229/2.jpg",
         "img/w229/3.jpg"
       ],
+      "motifs": [
+        "embers",
+        "crystals"
+      ],
+      "palette": [
+        "#de9d39",
+        "#eddd88",
+        "#ff4019"
+      ],
       "cover": "img/w229/cover.jpg"
     },
     {
@@ -313,6 +447,13 @@ window.GALAXY = {
         "img/w230/1.jpg",
         "img/w230/2.jpg"
       ],
+      "motifs": [
+        "spores",
+        "tendrils"
+      ],
+      "palette": [
+        "#4eb6ca"
+      ],
       "cover": "img/w230/cover.jpg"
     },
     {
@@ -325,7 +466,6 @@ window.GALAXY = {
       "author": "@Benny_Shmidt",
       "link": "https://t.me/StableWaifuComments/19284514",
       "article": "https://meloncherry.space/planetoid-leviafan-18-11",
-      "description": "",
       "gallery": [
         "img/w231/0.jpg",
         "img/w231/1.jpg",
@@ -336,6 +476,14 @@ window.GALAXY = {
         "img/w231/6.jpg",
         "img/w231/7.jpg",
         "img/w231/8.jpg"
+      ],
+      "motifs": [
+        "bubbles",
+        "sparkles"
+      ],
+      "palette": [
+        "#59bebb",
+        "#97a374"
       ],
       "cover": "img/w231/cover.jpg"
     },
@@ -352,6 +500,14 @@ window.GALAXY = {
       "gallery": [
         "img/w232/0.jpg"
       ],
+      "motifs": [
+        "hearts",
+        "petals"
+      ],
+      "palette": [
+        "#da5e9b",
+        "#ef8fd0"
+      ],
       "cover": "img/w232/cover.jpg"
     },
     {
@@ -366,6 +522,14 @@ window.GALAXY = {
       "description": "Мир не понятых творцов и не признанных талантов музыкантов и певцов. Одинокий и холодный. Вместо ветра далёкие мелодии и песен отголоски. Тут нет места живым и времени нет. Лишь дух идей витает в атмосфере.",
       "gallery": [
         "img/w233/0.jpg"
+      ],
+      "motifs": [
+        "rings",
+        "snow"
+      ],
+      "palette": [
+        "#9576a1",
+        "#c4a9b0"
       ],
       "cover": "img/w233/cover.jpg"
     },
@@ -387,6 +551,15 @@ window.GALAXY = {
         "img/w234/3.jpg",
         "img/w234/4.jpg"
       ],
+      "motifs": [
+        "tendrils",
+        "spores"
+      ],
+      "palette": [
+        "#deb989",
+        "#d23a3a",
+        "#f2efe6"
+      ],
       "cover": "img/w234/cover.jpg"
     },
     {
@@ -402,6 +575,14 @@ window.GALAXY = {
       "description": "Приятного сна, Эрия.",
       "gallery": [
         "img/w235/0.jpg"
+      ],
+      "motifs": [
+        "sparkles",
+        "snow"
+      ],
+      "palette": [
+        "#2352f4",
+        "#4b8eff"
       ],
       "cover": "img/w235/cover.jpg"
     },
@@ -422,6 +603,15 @@ window.GALAXY = {
         "img/w236/2.jpg",
         "img/w236/3.jpg"
       ],
+      "motifs": [
+        "tendrils",
+        "sparkles"
+      ],
+      "palette": [
+        "#6441d7",
+        "#ff19a6",
+        "#cb89f5"
+      ],
       "cover": "img/w236/cover.jpg"
     },
     {
@@ -434,11 +624,19 @@ window.GALAXY = {
       "author": "@SeaDevilTriangleOfTroubles",
       "link": "https://t.me/StableWaifuComments/19303194",
       "article": "https://meloncherry.space/rezonariya-20-11",
-      "description": "",
       "gallery": [
         "img/w237/0.jpg",
         "img/w237/1.jpg",
         "img/w237/2.jpg"
+      ],
+      "motifs": [
+        "rings",
+        "glitch"
+      ],
+      "palette": [
+        "#1f2ef8",
+        "#6aca4d",
+        "#4d4dcb"
       ],
       "cover": "img/w237/cover.jpg"
     },
@@ -455,6 +653,15 @@ window.GALAXY = {
       "gallery": [
         "img/w238/0.jpg",
         "img/w238/1.jpg"
+      ],
+      "motifs": [
+        "crystals",
+        "sparkles"
+      ],
+      "palette": [
+        "#ff191b",
+        "#ebb72c",
+        "#1922ff"
       ],
       "cover": "img/w238/cover.jpg"
     },
@@ -474,6 +681,14 @@ window.GALAXY = {
         "img/w239/1.jpg",
         "img/w239/2.jpg"
       ],
+      "motifs": [
+        "bubbles",
+        "sparkles"
+      ],
+      "palette": [
+        "#2672f1",
+        "#5831e7"
+      ],
       "cover": "img/w239/cover.jpg"
     },
     {
@@ -492,6 +707,15 @@ window.GALAXY = {
         "img/w240/1.jpg",
         "img/w240/2.jpg",
         "img/w240/3.jpg"
+      ],
+      "motifs": [
+        "petals",
+        "sparkles"
+      ],
+      "palette": [
+        "#f2c14e",
+        "#a77bff",
+        "#ffe9a8"
       ],
       "cover": "img/w240/cover.jpg"
     }

@@ -14,6 +14,7 @@
 Из корня репозитория, бот может работать — база открывается только на чтение:
 ```
 python tools/import_bot.py "Z:\Личное\SW\art_event_bot\event.sqlite3"
+python tools/fetch_articles.py
 python tools/build.py
 git add -A && git commit -m "Обновление галактики" && git push
 ```
@@ -25,6 +26,21 @@ git add -A && git commit -m "Обновление галактики" && git pus
 - Ручные правки — в `data/overrides.json` по id работы в боте: `name`, `description`,
   `hidden`, `featured` (победители → к ядру), `cover` (номер картинки-обложки), `group`, `x`, `y`, `size`.
   Они переживают повторный импорт.
+
+## Статьи
+`python tools/fetch_articles.py` скачивает статьи по ссылкам из works.json в `data/articles/`
+(служебный адрес `…/__data.json` движка MelonCherry). HTML чистится до безопасных тегов,
+картинки из статей не берутся — арты уже есть в галерее. Затем `python tools/build.py`:
+текст статьи заменяет текст поста в карточке (кроме работ с описанием из overrides.json).
+`--refresh` — перекачать все, если авторы отредактировали статьи.
+
+## Оформление вокруг планет
+Свечение в цветах арта и анимированные частицы по мотивам из описания:
+`bubbles` (вода), `crystals`, `embers` (огонь), `snow` (холод), `spores` (грибы), `petals` (цветы),
+`sparkles` (свет, сахар, золото), `tendrils` (корни, плоть, щупальца), `rings` (звук, сферы),
+`debris` (руины, обломки), `glitch` (код, цифра), `hearts`.
+Мотивы определяются по ключевым словам (`MOTIFS` в build.py), палитра — по картинке.
+Правка в overrides.json: `"motifs": ["bubbles", "crystals"]`, `"palette": ["#2b7cec", "#9fe8ff"]`.
 
 ## Добавить работы вручную
 1. Положить картинки в `source/`.
