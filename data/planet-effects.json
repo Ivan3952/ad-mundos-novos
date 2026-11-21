@@ -11,7 +11,7 @@
   "w222": {"lore":"Планетоид-темница сшит из осколков иных реальностей","shape":"seams","motifs":["debris"],"palette":["#ff9b72","#db82ff","#88b5fa"]},
   "w223": {"lore":"Пылевое кольцо, растущий кварц и бирюзово-зелёная эфирная магма","shape":"orbits","motifs":["crystals"],"palette":["#42edd0","#9dffc2","#dbffff"]},
   "w224": {"lore":"Вложенные полупрозрачные сферы и белая биолюминесценция","shape":"shells","motifs":[],"palette":["#e8fbff","#99d3ff"]},
-  "w225": {"lore":"Ледяные кольца преломляют свет двух голубых солнц","shape":"orbits","motifs":["crystals"],"palette":["#9deaff","#acb8ff","#f0abff"]},
+  "w225": {"lore":"Ледяные кольца преломляют свет двух голубых солнц","shape":"prismatic-rings","motifs":["crystals"],"palette":["#9deaff","#acb8ff","#f0abff"]},
   "w226": {"lore":"Розовый мир с заячьими ушками, прудами и фильтрующими кристаллами","shape":"ponds","motifs":["bubbles","crystals"],"palette":["#ffc3e0","#a6eeeb","#f8e7ff"]},
   "w227": {"lore":"Кольца из сброшенного панциря и биолюминесцентные споры из дыхалец","shape":"orbits","motifs":["debris","spores"],"palette":["#fd8b80","#865b79","#ffce9f"]},
   "w228": {"lore":"Шар из космического мусора, старые носители и цифровая цивилизация","shape":"scrap","motifs":["glitch","debris"],"palette":["#87ef9b","#b8e2d4","#828f9b"]},

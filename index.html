@@ -196,12 +196,13 @@
   }
 
   function makePlanetLayer(p) {
-    const layer = canvasLayer(384);
-    layer.translate(192, 192);
-    layer.scale(144, 144);
+    const layer = canvasLayer(448);
+    layer.translate(224, 224);
+    layer.scale(168, 168);
     layer.globalCompositeOperation = "lighter";
     const colors = p.pal;
     for (const [i, color] of colors.entries()) {
+      if (p.effect === "veil") break;
       glow(layer, Math.cos(i * 2.1) * 0.24, Math.sin(i * 2.1) * 0.18, 0.78, rgba(color, 0.22));
     }
     layer.scale(0.85, 0.85);
@@ -230,6 +231,21 @@
           ellipse(0.69 + i * 0.07, 0.16 + i * 0.018, -0.42, i % 2, 0.58 - i * 0.08);
         }
         break;
+      case "prismatic-rings": {
+        const prism = layer.createLinearGradient(-1, 0.2, 1, -0.2);
+        for (const [stop, color] of [[0, "#679aff00"], [.24, "#6fbcffbb"], [.53, "#e7f7ffde"], [.72, "#b5a8ffb0"], [.92, "#ffb3d070"], [1, "#ffb3d000"]]) {
+          prism.addColorStop(stop, color);
+        }
+        layer.strokeStyle = prism;
+        for (let i = 0; i < 18; i++) {
+          layer.globalAlpha = i % 4 === 0 ? 0.67 : 0.18;
+          layer.lineWidth = i % 4 === 0 ? 0.006 : 0.016;
+          layer.beginPath();
+          layer.ellipse(0, 0, 0.61 + i * 0.025, 0.20 + i * 0.01, -0.39, 0, 2 * Math.PI);
+          layer.stroke();
+        }
+        break;
+      }
       case "orbits":
       case "glass":
         for (let i = 0; i < 4; i++) {
@@ -261,7 +277,6 @@
         break;
       case "aurora":
       case "tides":
-      case "veil":
       case "field":
         for (let i = 0; i < 7; i++) {
           const y = 0.52 + i * 0.057;
@@ -280,6 +295,32 @@
           glow(layer, 0.78, -0.64, 0.14, ink(1, 0.95));
         }
         break;
+      case "veil": {
+        const light = layer.createLinearGradient(-1, 0, 1, 0);
+        light.addColorStop(0, "#8cb9ff00");
+        light.addColorStop(.24, "#8cb9ffc0");
+        light.addColorStop(.48, "#dae8ffbf");
+        light.addColorStop(.68, "#c3a8f400");
+        light.addColorStop(.84, "#a0baff80");
+        light.addColorStop(1, "#8cb9ff00");
+        layer.strokeStyle = light;
+        for (let i = 0; i < 22; i++) {
+          const d = i / 22;
+          layer.lineWidth = 0.007 + d * 0.014;
+          layer.globalAlpha = 0.52 * Math.sin((d + 0.04) * Math.PI);
+          layer.beginPath();
+          layer.moveTo(-1.02, -0.24 - d * 0.31);
+          layer.bezierCurveTo(-0.55, -1.14 + d * 0.4, 0.03, -0.11 - d * 0.69, 1.02, -0.42 - d * 0.29);
+          layer.stroke();
+        }
+        layer.globalAlpha = 1;
+        for (let i = 0; i < 29; i++) {
+          const x = -0.83 + i * 0.058, y = -0.52 + Math.sin(i * 2.4) * 0.14;
+          if (x > 0.27 && x < 0.52) continue;
+          glow(layer, x, y, i % 5 ? 0.02 : 0.042, ink(i, 0.53));
+        }
+        break;
+      }
       case "sugar":
       case "ponds":
       case "scrap":
@@ -513,7 +554,10 @@
   galaxy.globalCompositeOperation = "lighter";
   glow(galaxy, 0, 0, Math.max(700, R * 0.45), "rgba(255,205,205,.3)");
   for (const n of nebulae) {
-    glow(galaxy, n.x, n.y, n.r, `hsla(${n.hue},70%,55%,${n.a})`);
+    glow(galaxy, n.x, n.y, n.r * 1.55, `hsla(${n.hue},77%,48%,${n.a * 0.50})`);
+    glow(galaxy, n.x, n.y, n.r, `hsla(${n.hue},72%,55%,${n.a})`);
+    glow(galaxy, n.x + n.r * 0.28, n.y - n.r * 0.14, n.r * 0.66,
+      `hsla(${(n.hue + 42) % 360},66%,62%,${n.a * 0.48})`);
   }
   galaxy.fillStyle = "rgba(220,210,255,.32)";
   for (const d of dust) {
@@ -564,20 +608,31 @@
       layer.fillStyle = darkness;
       layer.fillRect(-1, -1, 2, 2);
     } else if (mark.kind === "black-hole") {
-      glow(layer, 0, 0, 0.97, "rgba(255,116,68,.59)");
+      glow(layer, -0.13, 0.04, 0.85, "rgba(245,62,25,.65)");
+      glow(layer, 0.23, -0.07, 0.66, "rgba(255,153,55,.45)");
       layer.rotate(-0.34);
-      for (let i = 0; i < 5; i++) {
-        layer.strokeStyle = `rgba(255,${130 + i * 23},84,${0.25 + i * 0.11})`;
-        layer.lineWidth = 0.045;
+      const disk = layer.createLinearGradient(-0.97, 0, 0.97, 0);
+      for (const [offset, color] of [[0, "#ff713200"], [.18, "#ffac58"], [.42, "#fff0c4"], [.64, "#de5519"], [.86, "#ff924b"], [1, "#ff713200"]]) {
+        disk.addColorStop(offset, color);
+      }
+      layer.strokeStyle = disk;
+      for (let i = 0; i < 42; i++) {
+        const d = i / 42;
+        layer.globalAlpha = 0.12 + Math.sin(d * Math.PI) * 0.55;
+        layer.lineWidth = i % 5 ? 0.009 : 0.024;
         layer.beginPath();
-        layer.ellipse(0, 0, 0.87 - i * 0.09, 0.33 - i * 0.038, 0, 0, 2 * Math.PI);
+        layer.ellipse(0, 0, 0.37 + d * 0.61, 0.10 + d * 0.26, 0, 0, 2 * Math.PI);
         layer.stroke();
       }
+      layer.globalAlpha = 1;
       layer.fillStyle = "#010106";
       layer.beginPath(); layer.arc(0, 0, 0.30, 0, 2 * Math.PI); layer.fill();
-      layer.strokeStyle = "#ffcc92";
-      layer.lineWidth = 0.027;
-      layer.beginPath(); layer.ellipse(0, 0.04, 0.46, 0.20, 0, 0, Math.PI); layer.stroke();
+      layer.lineWidth = 0.012;
+      layer.strokeStyle = "#ffc583";
+      layer.beginPath(); layer.arc(0, 0, 0.305, 3.1, 5.8); layer.stroke();
+      layer.strokeStyle = disk;
+      layer.lineWidth = 0.039;
+      layer.beginPath(); layer.ellipse(0, 0.03, 0.55, 0.16, 0, 0, Math.PI); layer.stroke();
     } else if (mark.kind === "giant") {
       glow(layer, 0, 0, 0.94, "rgba(211,156,175,.26)");
       layer.beginPath(); layer.arc(0, 0, 0.67, 0, 2 * Math.PI); layer.clip();
@@ -592,8 +647,18 @@
       const stars = mark.companion ? [[-0.32, 0.12, mark.color], [0.34, -0.14, mark.companion]] : [[0, 0, mark.color]];
       for (const [x, y, color] of stars) {
         glow(layer, x, y, mark.companion ? 0.59 : 0.97, color);
+        glow(layer, x, y, 0.31, color);
+        layer.fillStyle = "#fff8ee";
+        layer.beginPath(); layer.arc(x, y, 0.10, 0, 2 * Math.PI); layer.fill();
         layer.fillStyle = color;
-        layer.beginPath(); layer.arc(x, y, 0.16, 0, 2 * Math.PI); layer.fill();
+        layer.globalAlpha = 0.62;
+        layer.beginPath();
+        layer.moveTo(x - 0.40, y);
+        layer.lineTo(x, y - 0.025);
+        layer.lineTo(x + 0.40, y);
+        layer.lineTo(x, y + 0.025);
+        layer.closePath(); layer.fill();
+        layer.globalAlpha = 1;
       }
     }
     return layer.canvas;
@@ -661,6 +726,8 @@
       cam.z *= Math.pow(target.z / cam.z, k);
       if (Math.abs(target.x - cam.x) < 0.5 && Math.abs(target.y - cam.y) < 0.5 && Math.abs(target.z / cam.z - 1) < 0.002) target = null;
     }
+    const fxFocus = !target && !ptrs.size && !wheelPause && !reducedMotion.matches
+      ? (selected >= 0 ? selected : hovered) : -1;
     Object.assign(lastFrame, cam, { hovered, selected });
     needsDraw = false;
     animated = false;
@@ -701,7 +768,7 @@
       ctx.globalCompositeOperation = "screen";
       ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
       ctx.globalAlpha = 1;
-      if (!dimmed && fxA > 0 && p.fx.length) {
+      if (i === fxFocus && fxA > 0 && p.fx.length) {
         animated = true;
         drawFx(p, sx, sy, w, time, fxA);
       }
@@ -825,7 +892,10 @@
   document.getElementById("zout").onclick = () => { const z = cam.z; target = { x: cam.x, y: cam.y, z: Math.max(Math.min(0.08, bounds().z), z / 1.6) }; };
 
   // --- ввод: мышь, тач, щипок
-  const ptrs = new Map(); let moved = 0, pinch = null;
+  const ptrs = new Map();
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  reducedMotion.addEventListener("change", () => { needsDraw = true; });
+  let moved = 0, pinch = null, wheelPause = 0;
   cv.addEventListener("pointerdown", e => {
     cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     moved = 0; target = null; cv.classList.add("drag"); hideHint();
@@ -853,14 +923,21 @@
   });
   const up = e => {
     if (!ptrs.has(e.pointerId)) return;
-    ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+    ptrs.delete(e.pointerId); needsDraw = true;
+    if (ptrs.size < 2) pinch = null;
     if (ptrs.size === 0) {
       cv.classList.remove("drag");
       if (moved < 6) { const i = hit(e.clientX, e.clientY); if (i >= 0) select(i); else if (selected >= 0) select(-1); }
     }
   };
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
-  cv.addEventListener("wheel", e => { e.preventDefault(); hideHint(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+  cv.addEventListener("wheel", e => {
+    e.preventDefault();
+    hideHint();
+    clearTimeout(wheelPause);
+    wheelPause = setTimeout(() => { wheelPause = 0; needsDraw = true; }, 140);
+    zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+  }, { passive: false });
   addEventListener("keydown", e => {
     if (e.key === "Escape" && !landmarkNote.hidden) { dismissNote(true); return; }
     if (e.target === picker) return;

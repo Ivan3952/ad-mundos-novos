@@ -414,7 +414,7 @@ window.GALAXY = {
       ],
       "cover": "img/w225/cover.jpg",
       "location": "Система двух голубых солнц",
-      "effect": "orbits"
+      "effect": "prismatic-rings"
     },
     {
       "id": "w226",
