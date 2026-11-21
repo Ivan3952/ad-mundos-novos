@@ -198,7 +198,7 @@ window.GALAXY = {
       "x": 447,
       "y": 1235,
       "size": 619,
-      "name": "Без названия",
+      "name": "Планета сфер",
       "author": "@Oysis",
       "link": "https://t.me/StableWaifuComments/19275589",
       "article": "https://melcherry.pub/opisanie-planety-sfer-18-11",
