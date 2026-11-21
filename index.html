@@ -67,6 +67,40 @@
     .tools { right:12px; top:12px; gap:6px; }
     .tools button { width:36px; height:36px; }
   }
+
+  :root { --fg:#f8f3ec; --dim:#aaa9b9; --accent:#ded0be; --panel:#0d0e18; }
+  header { left:32px; top:28px; }
+  header h1 { font-family:Georgia,serif; font-size:clamp(25px,3.4vw,50px); font-weight:400; letter-spacing:-.045em; line-height:1; text-transform:none; }
+  header p { margin-top:10px; color:#c7c4d3; font-size:12px; letter-spacing:.09em; }
+  .tools { top:28px; right:28px; gap:0; border:1px solid #383749; border-radius:10px; background:#10111e; overflow:hidden; }
+  .tools button { border:0; border-radius:0; width:42px; height:42px; }
+  .tools button + button { border-left:1px solid #383749; }
+  .tools button:hover { background:#282539; }
+  .world-picker { position:fixed; bottom:26px; left:28px; display:grid; gap:7px; color:#cbc3d3; font-size:11px; }
+  .world-picker select { width:min(250px,70vw); min-height:42px; padding:0 12px; color:var(--fg); background:#10111e; border:1px solid #3e394e; border-radius:8px; font:inherit; font-size:13px; }
+  #hint { bottom:33px; color:#c7c4d3; white-space:nowrap; }
+  #card { --world-accent:#d9c6ff; right:24px; bottom:24px; width:410px; padding:0 19px 17px; background:#0d0e18; border-color:color-mix(in srgb,var(--world-accent) 40%,#11121e); border-radius:14px; box-shadow:0 16px 50px #0008; overflow:hidden; }
+  #card .cover { cursor:zoom-in; border:0; height:clamp(84px,19vh,170px); flex:none; margin:0 -19px 11px; background-color:#171626; background-position:center; background-size:cover; border-bottom:2px solid var(--world-accent); }
+  #card h2 { font-family:Georgia,serif; font-weight:400; font-size:clamp(22px,2.2vw,32px); line-height:1.1; margin-right:0; }
+  #card .author, #clocation { color:var(--world-accent); }
+  #card .close { z-index:1; width:34px; height:34px; border-radius:50%; color:#fff; background:#0d0e18e8; }
+  #card .desc { color:#e0dce5; scrollbar-color:var(--world-accent) transparent; }
+  #card .gal img { opacity:.93; border-radius:5px; }
+  #card .row a, #card .row button { background:#181825; border-color:#383749; }
+  #card .row a:hover, #card .row button:hover { border-color:var(--world-accent); }
+  :focus-visible { outline:2px solid #f0dbc9; outline-offset:-3px; }
+  @media(max-width:760px) { #hint { display:none; } }
+  @media(max-width:600px) {
+    header { left:16px; top:19px; } header h1 { font-size:23px; }
+    header p { margin-top:5px; letter-spacing:0; }
+    .tools { right:12px; top:16px; } .tools button { width:35px; height:36px; }
+    .world-picker { left:14px; bottom:14px; }
+    body:has(#card.open) .world-picker { visibility:hidden; }
+    #card { right:12px; bottom:12px; width:auto; padding-inline:14px; }
+    #card .cover { height:clamp(52px,10vh,95px); margin-inline:-14px; }
+    #card .gal img { height:45px; }
+  }
+  @media(prefers-reduced-motion:reduce) { #card, #hint { transition:none; } }
 </style>
 </head>
 <body>
@@ -77,7 +111,9 @@
   <button id="zout" title="Отдалить">−</button>
   <button id="home" title="Вся галактика">◎</button>
 </div>
+<label class="world-picker">Планеты<select id="world-picker"><option value="">Вся галактика</option></select></label>
 <div id="card">
+  <button class="cover" id="ccover" type="button" aria-label="Открыть иллюстрацию планеты"></button>
   <button class="close" id="cclose">×</button>
   <h2 id="cname"></h2>
   <div class="author" id="cauthor"></div>
@@ -624,6 +660,19 @@
         animated = true;
         drawFx(p, sx, sy, w, time, fxA);
       }
+      if (i === selected) {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = rgba(p.pal[0], 0.62);
+        ctx.lineWidth = 1;
+        const r = Math.max(w, h) * 0.57;
+        ctx.beginPath();
+        for (let quadrant = 0; quadrant < 4; quadrant++) {
+          const angle = Math.PI / 4 + quadrant * Math.PI / 2;
+          ctx.moveTo(sx + Math.cos(angle - 0.12) * r, sy + Math.sin(angle - 0.12) * r);
+          ctx.arc(sx, sy, r, angle - 0.12, angle + 0.12);
+        }
+        ctx.stroke();
+      }
       // подпись при достаточном зуме
       const act = i === hovered || i === selected;
       const la = act ? 1 : Math.min(1, Math.max(0, (cam.z - 0.2) / 0.12));
@@ -655,13 +704,25 @@
 
   // --- карточка
   const card = document.getElementById("card");
+  const picker = document.getElementById("world-picker");
+  const cover = document.getElementById("ccover");
+  P.map((planet, index) => ({ name: planet.name, index }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ru"))
+    .forEach(({ name, index }) => picker.add(new Option(name, index)));
+  picker.onchange = () => {
+    if (picker.value === "") document.getElementById("home").click();
+    else select(Number(picker.value));
+  };
   const hint = document.getElementById("hint");
   const hideHint = () => { hint.style.opacity = 0; };
   function select(i) {
     selected = i;
+    picker.value = i < 0 ? "" : String(i);
     if (i < 0) { card.classList.remove("open"); history.replaceState(null, "", location.pathname); return; }
     const p = P[i];
     document.getElementById("cname").textContent = p.name;
+    card.style.setProperty("--world-accent", p.palette?.[0] || "#d9c6ff");
+    cover.style.backgroundImage = `linear-gradient(0deg,#0d0e18a8,transparent 68%), url(${JSON.stringify(p.cover || p.img)})`;
     const au = document.getElementById("cauthor"); au.textContent = "";
     if (/^@\w+$/.test(p.author)) { const a = document.createElement("a"); a.href = "https://t.me/" + p.author.slice(1); a.target = "_blank"; a.rel = "noopener"; a.textContent = p.author; au.append(a); }
     else au.textContent = p.author;
@@ -698,6 +759,7 @@
   let shots = [], lbk = 0;
   const lb = document.getElementById("lb"), lbi = document.getElementById("lbi");
   function openLb(k) { lbk = (k + shots.length) % shots.length; lbi.src = shots[lbk]; document.getElementById("lbc").textContent = (lbk + 1) + " / " + shots.length; lb.classList.add("open"); }
+  cover.onclick = () => openLb(0);
   const closeLb = () => lb.classList.remove("open");
   document.getElementById("lbx").onclick = closeLb;
   document.getElementById("lbp").onclick = e => { e.stopPropagation(); openLb(lbk - 1); };
@@ -754,6 +816,7 @@
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   cv.addEventListener("wheel", e => { e.preventDefault(); hideHint(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
   addEventListener("keydown", e => {
+    if (e.target === picker) return;
     if (lb.classList.contains("open")) {
       if (e.key === "Escape") closeLb();
       if (e.key === "ArrowRight") openLb(lbk + 1);
