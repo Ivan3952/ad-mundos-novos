@@ -257,6 +257,23 @@
         layer.setLineDash([]);
         ellipse(0.67, 0.67, 0, 1, 0.35);
         break;
+      case "metronome":
+        ellipse(0.81, 0.81, 0, 0, 0.48);
+        ellipse(0.74, 0.74, 0, 1, 0.34);
+        for (let i = 0; i < 60; i++) {
+          const angle = i * Math.PI / 30;
+          const x = Math.cos(angle), y = Math.sin(angle);
+          const major = i % 5 === 0;
+          const inner = major ? 0.75 : 0.79;
+          layer.strokeStyle = ink(major ? 1 : 0, major ? 0.82 : 0.36);
+          layer.beginPath();
+          layer.moveTo(x * inner, y * inner);
+          layer.lineTo(x * 0.84, y * 0.84);
+          layer.stroke();
+        }
+        glow(layer, 0, -0.53, 0.22, ink(1, 0.52));
+        glow(layer, 0, 0.53, 0.22, ink(1, 0.52));
+        break;
       case "shield": {
         const rim = layer.createRadialGradient(0, 0, 0.39, 0, 0, 0.74);
         rim.addColorStop(0, "transparent");

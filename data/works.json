@@ -876,5 +876,24 @@
     "article": "",
     "group": "",
     "featured": false
+  },
+  {
+    "id": "w259",
+    "file": "259/0.jpg",
+    "gallery": [
+      "259/1.jpg",
+      "259/2.jpg",
+      "259/3.jpg",
+      "259/4.jpg",
+      "259/5.jpg"
+    ],
+    "name": "Такт-0",
+    "author": "@Benny_Shmidt",
+    "description": "",
+    "descriptionLocked": false,
+    "link": "https://t.me/StableWaifuComments/19314090",
+    "article": "https://meloncherry.space/takt-21-11",
+    "group": "",
+    "featured": false
   }
 ]
