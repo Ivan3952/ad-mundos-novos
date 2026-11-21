@@ -29,9 +29,10 @@ class Clean(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.out, self.skip, self.stack = [], 0, []
     def handle_starttag(self, tag, attrs):
-        if self.skip or tag in DROP_WITH_CONTENT:
-            if tag not in ("img", "br", "hr"): self.skip += 1
+        if tag in DROP_WITH_CONTENT:
+            if tag != "img": self.skip += 1
             return
+        if self.skip: return
         tag = RENAME.get(tag, tag)
         if tag not in KEEP: return
         if tag == "a":
