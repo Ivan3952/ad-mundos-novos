@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Ad mundos novos — галактика</title>
+<style>
+  :root { --fg:#e9e4ff; --dim:#9a93b8; --accent:#b9a6ff; --panel:rgba(14,10,28,.82); }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:#000; color:var(--fg); overflow:hidden;
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+  canvas.drag { cursor:grabbing; }
+  canvas.hover { cursor:pointer; }
+  header { position:fixed; left:20px; top:16px; pointer-events:none; }
+  header h1 { margin:0; font-size:20px; letter-spacing:.18em; text-transform:uppercase; font-weight:600; }
+  header p { margin:4px 0 0; font-size:12px; color:var(--dim); letter-spacing:.08em; }
+  .tools { position:fixed; right:16px; top:16px; display:flex; gap:8px; }
+  .tools button { background:var(--panel); color:var(--fg); border:1px solid rgba(185,166,255,.25);
+    border-radius:10px; width:40px; height:40px; font-size:18px; cursor:pointer; backdrop-filter:blur(8px); }
+  .tools button:hover { border-color:var(--accent); }
+  #card { position:fixed; right:20px; bottom:20px; width:340px; max-width:calc(100vw - 40px);
+    background:var(--panel); border:1px solid rgba(185,166,255,.25); border-radius:16px; padding:18px 18px 16px;
+    backdrop-filter:blur(14px); transform:translateY(20px); opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s; }
+  #card.open { opacity:1; transform:none; pointer-events:auto; }
+  #card h2 { margin:0 28px 2px 0; font-size:18px; }
+  #card .author { color:var(--accent); font-size:13px; }
+  #card .desc { margin:12px 0 0; font-size:14px; line-height:1.5; color:#cfc8ea; white-space:pre-line; }
+  #card .row { display:flex; gap:8px; margin-top:14px; }
+  #card a, #card button.nav { flex:1; text-align:center; text-decoration:none; color:var(--fg); font-size:13px;
+    padding:9px 10px; border-radius:10px; border:1px solid rgba(185,166,255,.3); background:rgba(185,166,255,.08); cursor:pointer; }
+  #card a:hover, #card button.nav:hover { border-color:var(--accent); }
+  #card .close { position:absolute; right:10px; top:8px; background:none; border:0; color:var(--dim); font-size:22px; cursor:pointer; }
+  #hint { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); font-size:12px; color:var(--dim);
+    pointer-events:none; transition:opacity 1s; }
+  @media (max-width:600px) {
+    #card { left:12px; right:12px; bottom:12px; width:auto; max-width:none; }
+    header { left:14px; top:14px; max-width:calc(100vw - 170px); }
+    header h1 { font-size:14px; letter-spacing:.12em; }
+    header p { font-size:11px; }
+    .tools { right:12px; top:12px; gap:6px; }
+    .tools button { width:36px; height:36px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header><h1 id="t"></h1><p id="st"></p></header>
+<div class="tools">
+  <button id="zin" title="Приблизить">+</button>
+  <button id="zout" title="Отдалить">−</button>
+  <button id="home" title="Вся галактика">◎</button>
+</div>
+<div id="card">
+  <button class="close" id="cclose">×</button>
+  <h2 id="cname"></h2>
+  <div class="author" id="cauthor"></div>
+  <p class="desc" id="cdesc"></p>
+  <div class="row">
+    <button class="nav" id="prev">←</button>
+    <a id="clink" target="_blank" rel="noopener">Пост в Telegram</a>
+    <button class="nav" id="next">→</button>
+  </div>
+</div>
+<div id="hint">Тяни, чтобы лететь · колесо или щипок — зум · нажми на планету</div>
+
+<script src="planets.js"></script>
+<script>
+(() => {
+  const G = window.GALAXY, P = G.planets;
+  document.getElementById("t").textContent = G.title;
+  document.getElementById("st").textContent = G.subtitle;
+
+  const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+  let W = 0, H = 0, DPR = 1;
+  const cam = { x: 0, y: 0, z: 0.5 };
+  let target = null;           // куда летит камера
+  let selected = -1, hovered = -1;
+  const MINZ = 0.08, MAXZ = 3;
+
+  // --- загрузка картинок
+  P.forEach(p => { p.im = new Image(); p.im.src = p.img; p.im.onload = () => { p.ready = true; }; });
+
+  // --- детерминированный генератор случайных чисел
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  // --- звёзды: 3 слоя параллакса, в экранных координатах с зацикливанием
+  const layers = [0.08, 0.2, 0.45].map((par, i) => ({
+    par, stars: Array.from({ length: 260 - i * 70 }, () => ({
+      x: rnd(), y: rnd(), r: (0.4 + rnd() * (0.6 + i * 0.5)), a: 0.3 + rnd() * 0.7, tw: rnd() * 6.28,
+      hue: rnd() < 0.15 ? 260 : rnd() < 0.1 ? 30 : 0
+    }))
+  }));
+  const TILE = 1400;
+
+  // --- туманности и рукава в мировых координатах
+  const nebulae = [];
+  const arms = 3;
+  for (let a = 0; a < arms; a++) for (let k = 0; k < 14; k++) {
+    const t = k / 13, ang = a * 2 * Math.PI / arms + t * 3.2, rad = 120 + t * 1500;
+    nebulae.push({ x: Math.cos(ang) * rad + (rnd() - .5) * 260, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 220,
+      r: 260 + rnd() * 420, hue: [265, 220, 300, 195][(a + k) % 4], a: 0.05 + rnd() * 0.07 });
+  }
+  const dust = Array.from({ length: 900 }, () => {
+    const a = Math.floor(rnd() * arms), t = Math.pow(rnd(), 0.8), ang = a * 2 * Math.PI / arms + t * 3.2 + (rnd() - .5) * 0.5;
+    const rad = 60 + t * 1700;
+    return { x: Math.cos(ang) * rad + (rnd() - .5) * 180, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 160, r: 0.6 + rnd() * 1.8, a: 0.2 + rnd() * 0.6 };
+  });
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+  }
+  const toScreen = (x, y) => [(x - cam.x) * cam.z + W / 2, (y - cam.y) * cam.z + H / 2];
+  const toWorld = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
+
+  function bounds() {
+    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+    P.forEach(p => { a = Math.min(a, p.x - p.size / 2); b = Math.min(b, p.y - p.size / 2); c = Math.max(c, p.x + p.size / 2); d = Math.max(d, p.y + p.size / 2); });
+    return { x: (a + c) / 2, y: (b + d) / 2, z: Math.min(W / (c - a + 200), H / (d - b + 200)) };
+  }
+
+  // --- отрисовка
+  function draw(time) {
+    if (target) {
+      const k = 0.09;
+      cam.x += (target.x - cam.x) * k; cam.y += (target.y - cam.y) * k;
+      cam.z *= Math.pow(target.z / cam.z, k);
+      if (Math.abs(target.x - cam.x) < 0.5 && Math.abs(target.y - cam.y) < 0.5 && Math.abs(target.z / cam.z - 1) < 0.002) target = null;
+    }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#020108"; ctx.fillRect(0, 0, W, H);
+
+    // фоновые звёзды
+    for (const L of layers) {
+      const ox = cam.x * cam.z * L.par, oy = cam.y * cam.z * L.par;
+      for (const s of L.stars) {
+        let sx = (s.x * TILE - ox) % TILE; if (sx < 0) sx += TILE;
+        let sy = (s.y * TILE - oy) % TILE; if (sy < 0) sy += TILE;
+        const al = s.a * (0.7 + 0.3 * Math.sin(time / 900 + s.tw));
+        ctx.fillStyle = s.hue ? `hsla(${s.hue},80%,80%,${al})` : `rgba(255,255,255,${al})`;
+        for (let tx = sx; tx < W; tx += TILE) for (let ty = sy; ty < H; ty += TILE) {
+          ctx.beginPath(); ctx.arc(tx, ty, s.r, 0, 6.283); ctx.fill();
+        }
+      }
+    }
+
+    // ядро, туманности, пыль рукавов
+    ctx.globalCompositeOperation = "lighter";
+    const [cx, cy] = toScreen(0, 0);
+    let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 700 * cam.z);
+    g.addColorStop(0, "rgba(255,225,200,.35)"); g.addColorStop(.25, "rgba(190,140,255,.12)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    for (const n of nebulae) {
+      const [sx, sy] = toScreen(n.x, n.y), r = n.r * cam.z;
+      if (sx + r < 0 || sx - r > W || sy + r < 0 || sy - r > H) continue;
+      g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+      g.addColorStop(0, `hsla(${n.hue},70%,55%,${n.a})`); g.addColorStop(1, "hsla(0,0%,0%,0)");
+      ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+    }
+    ctx.fillStyle = "rgba(220,210,255,.5)";
+    for (const d of dust) {
+      const [sx, sy] = toScreen(d.x, d.y);
+      if (sx < -5 || sx > W + 5 || sy < -5 || sy > H + 5) continue;
+      ctx.globalAlpha = d.a; ctx.beginPath(); ctx.arc(sx, sy, Math.max(0.5, d.r * Math.min(1, cam.z * 1.5)), 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // планеты: режим screen делает чёрный фон картинки прозрачным
+    P.forEach((p, i) => {
+      if (!p.ready) return;
+      const bob = Math.sin(time / 2400 + i * 1.7) * 6;
+      const [sx, sy] = toScreen(p.x, p.y + bob);
+      const w = p.size * cam.z, h = w * p.im.naturalHeight / p.im.naturalWidth;
+      if (sx + w < 0 || sx - w > W || sy + h < 0 || sy - h > H) return;
+      if (i === hovered || i === selected) {
+        ctx.globalCompositeOperation = "lighter";
+        const r = Math.max(w, h) * 0.55;
+        g = ctx.createRadialGradient(sx, sy, r * 0.3, sx, sy, r);
+        g.addColorStop(0, `rgba(185,166,255,${i === selected ? .22 : .12})`); g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+      }
+      ctx.globalCompositeOperation = "screen";
+      ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
+      // подпись при достаточном зуме
+      const la = Math.min(1, Math.max(0, (cam.z - 0.18) / 0.15));
+      if (la > 0) {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = la * (i === hovered || i === selected ? 1 : 0.75);
+        ctx.fillStyle = "#e9e4ff"; ctx.textAlign = "center";
+        ctx.font = "600 13px 'Segoe UI', system-ui, sans-serif";
+        ctx.fillText(p.name, sx, sy + h / 2 * 0.94);
+        ctx.fillStyle = "#9a93b8"; ctx.font = "12px 'Segoe UI', system-ui, sans-serif";
+        ctx.fillText(p.author, sx, sy + h / 2 * 0.94 + 16);
+        ctx.globalAlpha = 1;
+      }
+    });
+    requestAnimationFrame(draw);
+  }
+
+  function hit(sx, sy) {
+    const [wx, wy] = toWorld(sx, sy);
+    let best = -1, bd = Infinity;
+    P.forEach((p, i) => {
+      const d = Math.hypot(wx - p.x, wy - p.y);
+      if (d < p.size * 0.42 && d < bd) { bd = d; best = i; }
+    });
+    return best;
+  }
+
+  // --- карточка
+  const card = document.getElementById("card");
+  const hint = document.getElementById("hint");
+  const hideHint = () => { hint.style.opacity = 0; };
+  function select(i) {
+    selected = i;
+    if (i < 0) { card.classList.remove("open"); history.replaceState(null, "", location.pathname); return; }
+    const p = P[i];
+    document.getElementById("cname").textContent = p.name;
+    document.getElementById("cauthor").textContent = p.author;
+    document.getElementById("cdesc").textContent = p.description || "";
+    const l = document.getElementById("clink");
+    l.style.display = p.link ? "" : "none"; l.href = p.link || "#";
+    card.classList.add("open"); hideHint();
+    const mobile = W < 600;
+    const z = Math.min(W / (p.size * (mobile ? 1.15 : 1.6)), H / (p.size * 1.3), MAXZ);
+    // сдвиг, чтобы планету не закрывала карточка
+    target = { x: p.x + (mobile ? 0 : 170 / z), y: p.y + (mobile ? 110 / z : 0), z };
+    history.replaceState(null, "", "#" + p.id);
+  }
+  document.getElementById("cclose").onclick = () => select(-1);
+  document.getElementById("prev").onclick = () => select((selected - 1 + P.length) % P.length);
+  document.getElementById("next").onclick = () => select((selected + 1) % P.length);
+  document.getElementById("home").onclick = () => { select(-1); target = bounds(); };
+  const zoomBy = (f, sx = W / 2, sy = H / 2) => {
+    target = null;
+    const [wx, wy] = toWorld(sx, sy);
+    cam.z = Math.min(MAXZ, Math.max(MINZ, cam.z * f));
+    cam.x = wx - (sx - W / 2) / cam.z; cam.y = wy - (sy - H / 2) / cam.z;
+  };
+  document.getElementById("zin").onclick = () => { const z = cam.z; target = { x: cam.x, y: cam.y, z: Math.min(MAXZ, z * 1.6) }; };
+  document.getElementById("zout").onclick = () => { const z = cam.z; target = { x: cam.x, y: cam.y, z: Math.max(MINZ, z / 1.6) }; };
+
+  // --- ввод: мышь, тач, щипок
+  const ptrs = new Map(); let moved = 0, pinch = null;
+  cv.addEventListener("pointerdown", e => {
+    cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    moved = 0; target = null; cv.classList.add("drag"); hideHint();
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: cam.z }; }
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!ptrs.has(e.pointerId)) {
+      hovered = hit(e.clientX, e.clientY); cv.classList.toggle("hover", hovered >= 0); return;
+    }
+    const prev = ptrs.get(e.pointerId), cur = { x: e.clientX, y: e.clientY };
+    ptrs.set(e.pointerId, cur);
+    if (ptrs.size === 1) {
+      const dx = cur.x - prev.x, dy = cur.y - prev.y; moved += Math.abs(dx) + Math.abs(dy);
+      cam.x -= dx / cam.z; cam.y -= dy / cam.z;
+    } else if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()];
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const [wx, wy] = toWorld(mx, my);
+      cam.z = Math.min(MAXZ, Math.max(MINZ, pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+      cam.x = wx - (mx - W / 2) / cam.z; cam.y = wy - (my - H / 2) / cam.z;
+      // перенос центра щипка
+      const pdx = (cur.x - prev.x) / 2, pdy = (cur.y - prev.y) / 2;
+      cam.x -= pdx / cam.z; cam.y -= pdy / cam.z; moved += 100;
+    }
+  });
+  const up = e => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
+    if (ptrs.size === 0) {
+      cv.classList.remove("drag");
+      if (moved < 6) { const i = hit(e.clientX, e.clientY); if (i >= 0) select(i); else if (selected >= 0) select(-1); }
+    }
+  };
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  cv.addEventListener("wheel", e => { e.preventDefault(); hideHint(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+  addEventListener("keydown", e => {
+    if (e.key === "Escape") select(-1);
+    if (e.key === "ArrowRight" && selected >= 0) select((selected + 1) % P.length);
+    if (e.key === "ArrowLeft" && selected >= 0) select((selected - 1 + P.length) % P.length);
+  });
+  addEventListener("resize", resize);
+  addEventListener("hashchange", () => { const i = P.findIndex(p => p.id === location.hash.slice(1)); if (i >= 0 && i !== selected) select(i); });
+
+  resize();
+  Object.assign(cam, bounds()); cam.z *= 0.35; // старт издалека — и прилёт к галактике
+  target = bounds();
+  const startId = location.hash.slice(1), si = P.findIndex(p => p.id === startId);
+  if (si >= 0) setTimeout(() => select(si), 400);
+  setTimeout(hideHint, 7000);
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
