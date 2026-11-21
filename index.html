@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Ad mundos novos — галактика</title>
 <style>
-  :root { --fg:#e9e4ff; --dim:#9a93b8; --accent:#b9a6ff; --panel:rgba(14,10,28,.82); }
+  :root { --fg:#e9e4ff; --dim:#9a93b8; --accent:#b9a6ff; --panel:rgba(14,10,28,.94); }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; background:#000; color:var(--fg); overflow:hidden;
     font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
@@ -17,12 +17,12 @@
   header p { margin:4px 0 0; font-size:12px; color:var(--dim); letter-spacing:.08em; }
   .tools { position:fixed; right:16px; top:16px; display:flex; gap:8px; }
   .tools button { background:var(--panel); color:var(--fg); border:1px solid rgba(185,166,255,.25);
-    border-radius:10px; width:40px; height:40px; font-size:18px; cursor:pointer; backdrop-filter:blur(8px); }
+    border-radius:10px; width:40px; height:40px; font-size:18px; cursor:pointer; }
   .tools button:hover { border-color:var(--accent); }
   #card { position:fixed; right:20px; bottom:20px; width:380px; max-width:calc(100vw - 40px);
     max-height:calc(100vh - 100px); display:flex; flex-direction:column;
     background:var(--panel); border:1px solid rgba(185,166,255,.25); border-radius:16px; padding:18px 18px 16px;
-    backdrop-filter:blur(14px); transform:translateY(20px); opacity:0; pointer-events:none;
+    transform:translateY(20px); opacity:0; pointer-events:none;
     transition:opacity .25s, transform .25s; }
   #card.open { opacity:1; transform:none; pointer-events:auto; }
   #card h2 { margin:0 28px 2px 0; font-size:18px; }
@@ -106,10 +106,12 @@
   const cam = { x: 0, y: 0, z: 0.5 };
   let target = null;           // куда летит камера
   let selected = -1, hovered = -1;
-  const MINZ = 0.08, MAXZ = 3;
+  let needsDraw = true, animated = false;
+  const lastFrame = {};
+  const MAXZ = 3;
 
   // --- загрузка картинок
-  P.forEach(p => { p.im = new Image(); p.im.src = p.img; p.im.onload = () => { p.ready = true; }; });
+  P.forEach(p => { p.im = new Image(); p.im.onload = () => { p.ready = true; needsDraw = true; }; p.im.src = p.img; });
 
   // --- оформление окрестностей: свечение в цветах планеты + частицы по мотивам из описания
   const hexRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -120,26 +122,199 @@
     p.pal = (p.palette && p.palette.length ? p.palette : ["#b9a6ff"]).map(hexRgb);
     p.fx = [];
     (p.motifs || ["sparkles"]).forEach((m, mi) => {
-      const n = Math.round((FX_COUNT[m] || 18) * (mi ? 0.6 : 1));
+      const n = Math.max(1, Math.round(FX_COUNT[m] * (mi ? 0.35 : 0.6)));
       for (let k = 0; k < n; k++) p.fx.push({ m, k, n, a: R() * 6.283, r: 0.44 + R() * 0.5, sp: 0.6 + R() * 0.8,
         ph: m === "rings" ? k / n : R(), s: 0.6 + R() * 0.8, c: p.pal[(k + mi) % p.pal.length], rot: R() * 6.283 });
     });
   });
   const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
-  function drawAura(p, i, sx, sy, S, t) {
-    ctx.globalCompositeOperation = "lighter";
-    p.pal.forEach((c, j) => {
-      const ang = j * 2.1 + i + t * 0.00004 * (j % 2 ? 1 : -1);
-      const cx = sx + Math.cos(ang) * S * 0.16, cy = sy + Math.sin(ang) * S * 0.12;
-      const r = S * (0.78 + 0.06 * Math.sin(t / 3000 + j + i));
-      const g = ctx.createRadialGradient(cx, cy, S * 0.2, cx, cy, r);
-      g.addColorStop(0, rgba(c, 0.11)); g.addColorStop(0.55, rgba(c, 0.05)); g.addColorStop(1, rgba(c, 0));
-      ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-    });
+  function canvasLayer(size) {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    return canvas.getContext("2d");
+  }
+
+  function glow(layer, x, y, radius, color) {
+    const gradient = layer.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, "transparent");
+    layer.fillStyle = gradient;
+    layer.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  }
+
+  function makePlanetLayer(p) {
+    const layer = canvasLayer(384);
+    layer.translate(192, 192);
+    layer.scale(144, 144);
+    layer.globalCompositeOperation = "lighter";
+    const colors = p.pal;
+    for (const [i, color] of colors.entries()) {
+      glow(layer, Math.cos(i * 2.1) * 0.24, Math.sin(i * 2.1) * 0.18, 0.78, rgba(color, 0.22));
+    }
+    layer.scale(0.85, 0.85);
+    const ink = (i, alpha) => rgba(colors[i % colors.length], alpha);
+    const ellipse = (rx, ry, rotation, i, alpha, start = 0, end = 2 * Math.PI) => {
+      layer.strokeStyle = ink(i, alpha);
+      layer.beginPath();
+      layer.ellipse(0, 0, rx, ry, rotation, start, end);
+      layer.stroke();
+    };
+    layer.lineWidth = 0.009;
+    const shape = p.effect;
+    switch (shape) {
+      case "frost":
+        ellipse(0.61, 0.57, 0, 0, 0.5, 3.4, 6);
+        break;
+      case "seal":
+        layer.setLineDash([0.08, 0.055]);
+        ellipse(0.61, 0.61, 0, 0, 0.55);
+        layer.setLineDash([]);
+        ellipse(0.67, 0.67, 0, 1, 0.35);
+        break;
+      case "accretion":
+        layer.lineWidth = 0.033;
+        for (let i = 0; i < 5; i++) {
+          ellipse(0.69 + i * 0.07, 0.16 + i * 0.018, -0.42, i % 2, 0.58 - i * 0.08);
+        }
+        break;
+      case "orbits":
+      case "glass":
+        for (let i = 0; i < 4; i++) {
+          ellipse(0.78 + i * 0.07, 0.24 + i * 0.023, -0.28, shape === "glass" ? 0 : i, 0.44);
+        }
+        if (shape === "glass") ellipse(0.58, 0.58, 0, 1, 0.55, 3.3, 5.9);
+        break;
+      case "shells":
+        for (let i = 0; i < 3; i++) {
+          ellipse(0.55 + i * 0.11, 0.55 + i * 0.11, 0, i, 0.33, i * 1.9, i * 1.9 + 4.7);
+        }
+        break;
+      case "echo":
+      case "signal":
+        for (let i = 0; i < 6; i++) {
+          const angle = shape === "echo" ? -2.15 : i * Math.PI / 3;
+          const radius = shape === "echo" ? 0.56 + i * 0.09 : 0.68 + (i % 3) * 0.11;
+          ellipse(radius, radius, 0, i, 0.48 - i * 0.035, angle, angle + 0.57);
+        }
+        break;
+      case "heart":
+        layer.strokeStyle = ink(0, 0.45);
+        layer.lineWidth = 0.045;
+        layer.beginPath();
+        layer.moveTo(0, 0.92);
+        layer.bezierCurveTo(-1.64, -0.1, -0.86, -1.22, 0, -0.65);
+        layer.bezierCurveTo(0.86, -1.22, 1.64, -0.1, 0, 0.92);
+        layer.stroke();
+        break;
+      case "aurora":
+      case "tides":
+      case "veil":
+      case "field":
+        for (let i = 0; i < 7; i++) {
+          const y = 0.52 + i * 0.057;
+          layer.strokeStyle = ink(i, 0.36 - i * 0.026);
+          layer.beginPath();
+          layer.moveTo(-0.94, -y * 0.65);
+          layer.bezierCurveTo(-0.4, -y * 1.6, 0.08, -y * 0.42, 0.94, -y);
+          if (shape === "tides" || shape === "field") {
+            layer.moveTo(-0.94, y * 0.95);
+            layer.bezierCurveTo(-0.42, y * 0.4, 0.4, y * 1.44, 0.94, y * 0.66);
+          }
+          layer.stroke();
+        }
+        if (shape === "aurora") {
+          glow(layer, -0.83, -0.46, 0.15, ink(0, 0.95));
+          glow(layer, 0.78, -0.64, 0.14, ink(1, 0.95));
+        }
+        break;
+      case "sugar":
+      case "ponds":
+      case "scrap":
+        for (let i = 0; i < 8; i++) {
+          const angle = i * 2.4;
+          const radius = 0.63 + (i % 3) * 0.12;
+          const size = 0.033 + (i % 4) * 0.011;
+          layer.save();
+          layer.translate(Math.cos(angle) * radius, Math.sin(angle) * radius);
+          layer.rotate(angle);
+          layer.strokeStyle = ink(i, 0.65);
+          layer.fillStyle = ink(i + 1, 0.17);
+          layer.beginPath();
+          if (shape === "ponds") {
+            layer.ellipse(0, 0, size * 1.9, size, 0, 0, 2 * Math.PI);
+          } else if (shape === "sugar") {
+            layer.moveTo(-size, 0);
+            layer.lineTo(0, -size * 1.4);
+            layer.lineTo(size, 0);
+            layer.lineTo(0, size * 1.4);
+            layer.closePath();
+          } else {
+            layer.rect(-size, -size * 0.5, size * 2, size);
+            layer.moveTo(-size * 0.33, -size * 0.5);
+            layer.lineTo(-size * 0.33, size * 0.5);
+          }
+          layer.fill();
+          layer.stroke();
+          layer.restore();
+        }
+        break;
+      case "grasp":
+        for (let i = 0; i < 5; i++) {
+          layer.save();
+          layer.rotate(i * 1.26);
+          layer.strokeStyle = ink(i, 0.52);
+          layer.lineWidth = 0.023;
+          layer.beginPath();
+          layer.moveTo(0.35, 0);
+          layer.bezierCurveTo(0.72, -0.24, 1.14, 0.22, 0.92, 0.38);
+          layer.quadraticCurveTo(0.78, 0.46, 0.81, 0.24);
+          layer.stroke();
+          layer.restore();
+        }
+        break;
+      case "jellyfish":
+      case "fractures":
+      case "seams":
+      case "branches":
+      case "circuits":
+        for (let i = 0; i < 9; i++) {
+          const a = i * Math.PI * 2 / 9;
+          layer.save();
+          if (shape !== "jellyfish") layer.rotate(a);
+          layer.strokeStyle = ink(i, 0.52);
+          layer.beginPath();
+          if (shape === "jellyfish") {
+            const x = (i - 4) * 0.1;
+            layer.moveTo(x, 0.27);
+            layer.bezierCurveTo(x - 0.14, 0.51, x + 0.32, 0.78, x * 1.4, 1.09 - Math.abs(x) * 0.44);
+          } else {
+            const length = 0.71 + (i % 3) * 0.09;
+            layer.moveTo(0.39, 0);
+            if (shape === "branches") {
+              layer.quadraticCurveTo(0.64, 0.13, length, -0.18);
+              layer.moveTo(0.61, 0.034);
+              layer.quadraticCurveTo(0.74, 0.14, length + 0.06, 0.13);
+            } else {
+              layer.lineTo(0.56, 0);
+              layer.lineTo(0.56 + (shape === "circuits" ? 0 : 0.08), 0.13);
+              layer.lineTo(length, 0.13);
+              if (shape === "seams") {
+                layer.moveTo(0.63, 0.04);
+                layer.lineTo(0.63, 0.23);
+              }
+            }
+          }
+          layer.stroke();
+          layer.restore();
+        }
+        break;
+    }
+    return layer.canvas;
   }
 
   function drawFx(p, sx, sy, S, t, fxA) {
+    ctx.globalCompositeOperation = "lighter";
     const T = t / 1000, U = S / 500;               // U — масштаб «пикселя» относительно планеты 500px
     for (const f of p.fx) {
       const u = (T * 0.08 * f.sp + f.ph) % 1;    // фаза цикла 0..1
@@ -181,7 +356,6 @@
       const px = sx + x * S, py = sy + y * S, sz = f.s * U;
       if (px < -50 || px > W + 50 || py < -50 || py > H + 50) continue;
       const A = al * fxA;
-      ctx.globalCompositeOperation = "lighter";
       ctx.strokeStyle = ctx.fillStyle = rgba(f.c, A);
       ctx.lineWidth = Math.max(0.6, 1.4 * U);
       switch (shape) {
@@ -245,13 +419,25 @@
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
   // --- звёзды: 3 слоя параллакса, в экранных координатах с зацикливанием
-  const layers = [0.08, 0.2, 0.45].map((par, i) => ({
-    par, stars: Array.from({ length: 260 - i * 70 }, () => ({
-      x: rnd(), y: rnd(), r: (0.4 + rnd() * (0.6 + i * 0.5)), a: 0.3 + rnd() * 0.7, tw: rnd() * 6.28,
+  const TILE = 1024;
+  const layers = [0.08, 0.23, 0.45].map((par, i) => ({
+    par, stars: Array.from({ length: 180 - i * 40 }, () => ({
+      x: rnd(), y: rnd(), r: (0.4 + rnd() * (0.6 + i * 0.5)), a: 0.3 + rnd() * 0.7,
       hue: rnd() < 0.15 ? 260 : rnd() < 0.1 ? 30 : 0
     }))
   }));
-  const TILE = 1400;
+  for (const layer of layers) {
+    const tile = canvasLayer(TILE);
+    for (const star of layer.stars) {
+      tile.fillStyle = star.hue ? `hsla(${star.hue},80%,80%,${star.a * 0.72})` : `rgba(255,255,255,${star.a * 0.72})`;
+      for (const dx of [-TILE, 0, TILE]) for (const dy of [-TILE, 0, TILE]) {
+        const x = star.x * TILE + dx, y = star.y * TILE + dy;
+        if (x < -star.r || x > TILE + star.r || y < -star.r || y > TILE + star.r) continue;
+        tile.beginPath(); tile.arc(x, y, star.r, 0, 2 * Math.PI); tile.fill();
+      }
+    }
+    layer.tile = tile.canvas;
+  }
 
   // --- туманности и рукава в мировых координатах
   const nebulae = [];
@@ -267,10 +453,27 @@
     return { x: Math.cos(ang) * rad + (rnd() - .5) * 180, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 160, r: 0.6 + rnd() * 1.8, a: 0.2 + rnd() * 0.6 };
   });
 
+  // Туманности и пыль неподвижны в мировых координатах: рисуем их один раз.
+  const galaxyRadius = R * 1.2 + 900;
+  const galaxy = canvasLayer(1536);
+  galaxy.translate(768, 768);
+  galaxy.scale(768 / galaxyRadius, 768 / galaxyRadius);
+  galaxy.globalCompositeOperation = "lighter";
+  glow(galaxy, 0, 0, Math.max(700, R * 0.45), "rgba(255,205,205,.3)");
+  for (const n of nebulae) {
+    glow(galaxy, n.x, n.y, n.r, `hsla(${n.hue},70%,55%,${n.a})`);
+  }
+  galaxy.fillStyle = "rgba(220,210,255,.32)";
+  for (const d of dust) {
+    galaxy.globalAlpha = d.a;
+    galaxy.beginPath(); galaxy.arc(d.x, d.y, d.r * 2.4, 0, 2 * Math.PI); galaxy.fill();
+  }
+
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = innerWidth; H = innerHeight;
+    DPR = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(2304000 / (W * H)));
     cv.width = W * DPR; cv.height = H * DPR;
+    needsDraw = true;
   }
   const toScreen = (x, y) => [(x - cam.x) * cam.z + W / 2, (y - cam.y) * cam.z + H / 2];
   const toWorld = (sx, sy) => [(sx - W / 2) / cam.z + cam.x, (sy - H / 2) / cam.z + cam.y];
@@ -283,71 +486,57 @@
 
   // --- отрисовка
   function draw(time) {
+    requestAnimationFrame(draw);
+    if (!needsDraw && !animated && !target && cam.x === lastFrame.x && cam.y === lastFrame.y &&
+        cam.z === lastFrame.z && hovered === lastFrame.hovered && selected === lastFrame.selected) return;
     if (target) {
       const k = 0.09;
       cam.x += (target.x - cam.x) * k; cam.y += (target.y - cam.y) * k;
       cam.z *= Math.pow(target.z / cam.z, k);
       if (Math.abs(target.x - cam.x) < 0.5 && Math.abs(target.y - cam.y) < 0.5 && Math.abs(target.z / cam.z - 1) < 0.002) target = null;
     }
+    Object.assign(lastFrame, cam, { hovered, selected });
+    needsDraw = false;
+    animated = false;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "#020108"; ctx.fillRect(0, 0, W, H);
 
-    // фоновые звёзды
-    for (const L of layers) {
-      const ox = cam.x * cam.z * L.par, oy = cam.y * cam.z * L.par;
-      for (const s of L.stars) {
-        let sx = (s.x * TILE - ox) % TILE; if (sx < 0) sx += TILE;
-        let sy = (s.y * TILE - oy) % TILE; if (sy < 0) sy += TILE;
-        const al = s.a * (0.7 + 0.3 * Math.sin(time / 900 + s.tw));
-        ctx.fillStyle = s.hue ? `hsla(${s.hue},80%,80%,${al})` : `rgba(255,255,255,${al})`;
-        for (let tx = sx; tx < W; tx += TILE) for (let ty = sy; ty < H; ty += TILE) {
-          ctx.beginPath(); ctx.arc(tx, ty, s.r, 0, 6.283); ctx.fill();
-        }
+    for (const layer of layers) {
+      const x = ((-cam.x * cam.z * layer.par) % TILE + TILE) % TILE - TILE;
+      const y = ((-cam.y * cam.z * layer.par) % TILE + TILE) % TILE - TILE;
+      for (let tx = x; tx < W; tx += TILE) for (let ty = y; ty < H; ty += TILE) {
+        ctx.drawImage(layer.tile, tx, ty);
       }
     }
-
-    // ядро, туманности, пыль рукавов
-    ctx.globalCompositeOperation = "lighter";
     const [cx, cy] = toScreen(0, 0);
-    let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(700, R * 0.45) * cam.z);
-    g.addColorStop(0, "rgba(255,225,200,.35)"); g.addColorStop(.25, "rgba(190,140,255,.12)"); g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    for (const n of nebulae) {
-      const [sx, sy] = toScreen(n.x, n.y), r = n.r * cam.z;
-      if (sx + r < 0 || sx - r > W || sy + r < 0 || sy - r > H) continue;
-      g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
-      g.addColorStop(0, `hsla(${n.hue},70%,55%,${n.a})`); g.addColorStop(1, "hsla(0,0%,0%,0)");
-      ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+    const radius = galaxyRadius * cam.z;
+    if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
+      ctx.drawImage(galaxy.canvas, cx - radius, cy - radius, radius * 2, radius * 2);
     }
-    ctx.fillStyle = "rgba(220,210,255,.5)";
-    for (const d of dust) {
-      const [sx, sy] = toScreen(d.x, d.y);
-      if (sx < -5 || sx > W + 5 || sy < -5 || sy > H + 5) continue;
-      ctx.globalAlpha = d.a; ctx.beginPath(); ctx.arc(sx, sy, Math.max(0.5, d.r * Math.min(1, cam.z * 1.5)), 0, 6.283); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
 
     // планеты: режим screen делает чёрный фон картинки прозрачным
     P.forEach((p, i) => {
       if (!p.ready) return;
-      const bob = Math.sin(time / 2400 + i * 1.7) * 6;
-      const [sx, sy] = toScreen(p.x, p.y + bob);
+      const [sx, sy] = toScreen(p.x, p.y);
       const w = p.size * cam.z, h = w * p.im.naturalHeight / p.im.naturalWidth;
-      if (sx + w * 1.3 < 0 || sx - w * 1.3 > W || sy + h * 1.3 < 0 || sy - h * 1.3 > H) return;
-      if (i === hovered || i === selected) {
-        ctx.globalCompositeOperation = "lighter";
-        const r = Math.max(w, h) * 0.55;
-        g = ctx.createRadialGradient(sx, sy, r * 0.3, sx, sy, r);
-        g.addColorStop(0, `rgba(185,166,255,${i === selected ? .22 : .12})`); g.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
-      }
-      const S = p.size * cam.z;
-      const fxA = Math.min(1, Math.max(0, (S - 50) / 110));   // мелкие (далёкие) планеты без частиц
-      drawAura(p, i, sx, sy, S, time);
+      const extent = 4 / 3 * Math.max(w, h);
+      if (sx + extent < 0 || sx - extent > W || sy + extent < 0 || sy - extent > H) return;
+      const fxA = Math.min(1, Math.max(0, (w - 100) / 150));
+      const art = p.scene ??= makePlanetLayer(p);
+      const halo = w * 4 / 3;
+      ctx.globalCompositeOperation = "lighter";
+      const dimmed = selected >= 0 && i !== selected;
+      ctx.globalAlpha = dimmed ? 0.22 : i === selected ? 1 : i === hovered ? 0.92 : 0.78;
+      ctx.drawImage(art, sx - halo, sy - halo, halo * 2, halo * 2);
+      ctx.globalAlpha = dimmed ? 0.55 : 1;
       ctx.globalCompositeOperation = "screen";
       ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
-      if (fxA > 0) drawFx(p, sx, sy, S, time, fxA);
+      ctx.globalAlpha = 1;
+      if (!dimmed && fxA > 0 && p.fx.length) {
+        animated = true;
+        drawFx(p, sx, sy, w, time, fxA);
+      }
       // подпись при достаточном зуме
       const act = i === hovered || i === selected;
       const la = act ? 1 : Math.min(1, Math.max(0, (cam.z - 0.2) / 0.12));
@@ -365,7 +554,6 @@
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
     });
-    requestAnimationFrame(draw);
   }
 
   function hit(sx, sy) {
@@ -428,11 +616,11 @@
   const zoomBy = (f, sx = W / 2, sy = H / 2) => {
     target = null;
     const [wx, wy] = toWorld(sx, sy);
-    cam.z = Math.min(MAXZ, Math.max(MINZ, cam.z * f));
+    cam.z = Math.min(MAXZ, Math.max(Math.min(0.08, bounds().z), cam.z * f));
     cam.x = wx - (sx - W / 2) / cam.z; cam.y = wy - (sy - H / 2) / cam.z;
   };
   document.getElementById("zin").onclick = () => { const z = cam.z; target = { x: cam.x, y: cam.y, z: Math.min(MAXZ, z * 1.6) }; };
-  document.getElementById("zout").onclick = () => { const z = cam.z; target = { x: cam.x, y: cam.y, z: Math.max(MINZ, z / 1.6) }; };
+  document.getElementById("zout").onclick = () => { const z = cam.z; target = { x: cam.x, y: cam.y, z: Math.max(Math.min(0.08, bounds().z), z / 1.6) }; };
 
   // --- ввод: мышь, тач, щипок
   const ptrs = new Map(); let moved = 0, pinch = null;
@@ -454,7 +642,7 @@
       const [a, b] = [...ptrs.values()];
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
       const [wx, wy] = toWorld(mx, my);
-      cam.z = Math.min(MAXZ, Math.max(MINZ, pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
+      cam.z = Math.min(MAXZ, Math.max(Math.min(0.08, bounds().z), pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d));
       cam.x = wx - (mx - W / 2) / cam.z; cam.y = wy - (my - H / 2) / cam.z;
       // перенос центра щипка
       const pdx = (cur.x - prev.x) / 2, pdy = (cur.y - prev.y) / 2;

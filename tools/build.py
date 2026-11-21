@@ -30,11 +30,12 @@ SRC, IMG = os.path.join(ROOT, "source"), os.path.join(ROOT, "img")
 WORKS, OUT = os.path.join(ROOT, "data", "works.json"), os.path.join(ROOT, "planets.js")
 
 TITLE, SUBTITLE = "Ad mundos novos", "Галактика миров участников"
-GAP = 40          # минимальный зазор между планетами
+GAP = 115          # минимальный зазор между планетами
 ARM_TURN = 3.2    # закрутка рукавов, радиан
 
 # ---------- оформление окрестностей планеты ----------
 ARTICLES = os.path.join(ROOT, "data", "articles")
+EFFECTS = os.path.join(ROOT, "data", "planet-effects.json")
 # мотив -> корни слов в названии/описании/статье
 MOTIFS = {
     "bubbles":  ["вод", "океан", "мор", "медуз", "пузыр", "волн", "русал", "сирен", "кракен", "водоросл", "течени"],
@@ -195,6 +196,8 @@ def main():
     args = ap.parse_args()
 
     works = json.load(open(WORKS, encoding="utf-8"))
+    with open(EFFECTS, encoding="utf-8") as f:
+        effects = json.load(f)
     os.makedirs(IMG, exist_ok=True)
     planets, seen = [], set()
     for w in works:
@@ -229,8 +232,9 @@ def main():
         art = json.load(open(art_path, encoding="utf-8")) if os.path.exists(art_path) else None
         desc_html = art["html"] if art and art.get("html") and not w.get("descriptionLocked") else ""
         text = " ".join([w.get("name") or "", w.get("description") or "", plain_text(desc_html)])
-        motifs = w.get("motifs") or motifs_for(text)
-        palette = w.get("palette") or palette_for(dst)
+        effect = effects.get(pid, {})
+        motifs = effect["motifs"] if "motifs" in effect else w.get("motifs") or motifs_for(text)
+        palette = effect.get("palette") or w.get("palette") or palette_for(dst)
         planets.append({
             "id": pid, "img": f"img/{pid}.jpg", "x": w.get("x"), "y": w.get("y"), "size": size,
             "name": w.get("name") or "Без названия", "author": w.get("author") or "",
@@ -245,6 +249,7 @@ def main():
     arms, extent, groups = layout(planets, args.seed)
     for p in planets:
         p["x"], p["y"] = round(p["x"]), round(p["y"])
+        if p["id"] in effects: p["effect"] = effects[p["id"]]["shape"]
         if not p["featured"]: p.pop("featured")
         if not p["group"]: p.pop("group")
         if not p["gallery"]: p.pop("gallery")
