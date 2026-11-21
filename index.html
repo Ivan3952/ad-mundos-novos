@@ -637,10 +637,18 @@
     galaxy.fillRect(x, y, size, size);
   }
   galaxy.globalAlpha = 1;
-  glow(galaxy, 0, 0, R * 0.38, "rgba(236,145,113,.31)");
-  glow(galaxy, 0, 0, R * 0.18, "rgba(255,193,131,.58)");
-  glow(galaxy, 0, 0, R * 0.056, "rgba(255,221,174,.58)");
-  glow(galaxy, 0, 0, R * 0.014, "rgba(255,244,220,.88)");
+
+  // Keep the bright core separate so it cannot wash out nearby worlds at local zoom.
+  const coreRadius = R * 0.38;
+  const core = canvasLayer(384);
+  core.translate(192, 192);
+  core.rotate(-0.22);
+  core.scale(192 / coreRadius, 192 * 0.72 / coreRadius);
+  core.globalCompositeOperation = "lighter";
+  glow(core, 0, 0, coreRadius, "rgba(236,145,113,.31)");
+  glow(core, 0, 0, R * 0.18, "rgba(255,193,131,.58)");
+  glow(core, 0, 0, R * 0.056, "rgba(255,221,174,.58)");
+  glow(core, 0, 0, R * 0.014, "rgba(255,244,220,.88)");
 
   const mapMode = document.getElementById("map-mode");
   const landmarkControls = document.getElementById("landmark-controls");
@@ -913,6 +921,14 @@
     if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
       ctx.globalAlpha = selected < 0 ? 1 : 0.48;
       ctx.drawImage(galaxy.canvas, cx - radius, cy - radius, radius * 2, radius * 2);
+    }
+    const coreSize = coreRadius * cam.z;
+    const coreFade = Math.min(1, Math.max(0, (0.24 - cam.z) / 0.15));
+    if (coreFade > 0 && cx + coreSize > 0 && cx - coreSize < W && cy + coreSize > 0 && cy - coreSize < H) {
+      ctx.globalAlpha = coreFade * coreFade * (selected < 0 ? 1 : 0.24);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.drawImage(core.canvas, cx - coreSize, cy - coreSize, coreSize * 2, coreSize * 2);
+      ctx.globalCompositeOperation = "source-over";
     }
 
     ctx.globalAlpha = 1;
