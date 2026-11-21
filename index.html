@@ -26,6 +26,8 @@
   #card.open { opacity:1; transform:none; pointer-events:auto; }
   #card h2 { margin:0 28px 2px 0; font-size:18px; }
   #card .author { color:var(--accent); font-size:13px; }
+  #card .group { color:var(--dim); font-size:12px; margin-top:2px; }
+  #card .group:empty { display:none; }
   #card .desc { margin:12px 0 0; font-size:14px; line-height:1.5; color:#cfc8ea; white-space:pre-line; }
   #card .row { display:flex; gap:8px; margin-top:14px; }
   #card a, #card button.nav { flex:1; text-align:center; text-decoration:none; color:var(--fg); font-size:13px;
@@ -56,6 +58,7 @@
   <button class="close" id="cclose">×</button>
   <h2 id="cname"></h2>
   <div class="author" id="cauthor"></div>
+  <div class="group" id="cgroup"></div>
   <p class="desc" id="cdesc"></p>
   <div class="row">
     <button class="nav" id="prev">←</button>
@@ -96,15 +99,15 @@
 
   // --- туманности и рукава в мировых координатах
   const nebulae = [];
-  const arms = 3;
+  const arms = G.arms || 3, R = Math.max(900, G.radius || 1500);
   for (let a = 0; a < arms; a++) for (let k = 0; k < 14; k++) {
-    const t = k / 13, ang = a * 2 * Math.PI / arms + t * 3.2, rad = 120 + t * 1500;
+    const t = k / 13, ang = a * 2 * Math.PI / arms + t * 3.2, rad = 120 + t * R;
     nebulae.push({ x: Math.cos(ang) * rad + (rnd() - .5) * 260, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 220,
       r: 260 + rnd() * 420, hue: [265, 220, 300, 195][(a + k) % 4], a: 0.05 + rnd() * 0.07 });
   }
-  const dust = Array.from({ length: 900 }, () => {
+  const dust = Array.from({ length: Math.min(3000, Math.round(900 * R / 1500)) }, () => {
     const a = Math.floor(rnd() * arms), t = Math.pow(rnd(), 0.8), ang = a * 2 * Math.PI / arms + t * 3.2 + (rnd() - .5) * 0.5;
-    const rad = 60 + t * 1700;
+    const rad = 60 + t * R * 1.1;
     return { x: Math.cos(ang) * rad + (rnd() - .5) * 180, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 160, r: 0.6 + rnd() * 1.8, a: 0.2 + rnd() * 0.6 };
   });
 
@@ -151,7 +154,7 @@
     // ядро, туманности, пыль рукавов
     ctx.globalCompositeOperation = "lighter";
     const [cx, cy] = toScreen(0, 0);
-    let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 700 * cam.z);
+    let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(700, R * 0.45) * cam.z);
     g.addColorStop(0, "rgba(255,225,200,.35)"); g.addColorStop(.25, "rgba(190,140,255,.12)"); g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     for (const n of nebulae) {
@@ -222,6 +225,7 @@
     document.getElementById("cname").textContent = p.name;
     document.getElementById("cauthor").textContent = p.author;
     document.getElementById("cdesc").textContent = p.description || "";
+    document.getElementById("cgroup").textContent = (p.featured ? "★ " : "") + (p.group || "");
     const l = document.getElementById("clink");
     l.style.display = p.link ? "" : "none"; l.href = p.link || "#";
     card.classList.add("open"); hideHint();
