@@ -1019,7 +1019,7 @@ window.GALAXY = {
       ],
       "cover": "img/w245/cover.jpg",
       "location": "Родная система — Тау Кита · планета способна менять орбиту",
-      "effect": "seal"
+      "effect": "shield"
     },
     {
       "id": "w246",
@@ -1253,7 +1253,7 @@ window.GALAXY = {
       ],
       "cover": "img/w254/cover.jpg",
       "location": "Вблизи чёрной дыры",
-      "effect": "accretion"
+      "effect": "obsidian"
     },
     {
       "id": "w255",

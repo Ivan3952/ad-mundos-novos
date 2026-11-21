@@ -80,11 +80,13 @@
   .world-picker select { width:min(250px,70vw); min-height:42px; padding:0 12px; color:var(--fg); background:#10111e; border:1px solid #3e394e; border-radius:8px; font:inherit; font-size:13px; }
   #hint { bottom:33px; color:#c7c4d3; white-space:nowrap; }
   #card { --world-accent:#d9c6ff; right:24px; bottom:24px; width:410px; padding:0 19px 17px; background:#0d0e18; border-color:color-mix(in srgb,var(--world-accent) 40%,#11121e); border-radius:14px; box-shadow:0 16px 50px #0008; overflow:hidden; }
-  #card .cover { cursor:zoom-in; border:0; height:clamp(84px,19vh,170px); flex:none; margin:0 -19px 11px; background-color:#171626; background-position:center; background-size:cover; border-bottom:2px solid var(--world-accent); }
+  #card .cover { cursor:zoom-in; border:0; height:clamp(100px,24vh,230px); flex:none; margin:0 -19px 15px; background-color:#090914; background-position:center; background-size:100% 100%, contain; background-repeat:no-repeat; border-bottom:1px solid var(--world-accent); }
   #card h2 { font-family:Georgia,serif; font-weight:400; font-size:clamp(22px,2.2vw,32px); line-height:1.1; margin-right:0; }
   #card .author, #clocation { color:var(--world-accent); }
   #card .close { z-index:1; width:34px; height:34px; border-radius:50%; color:#fff; background:#0d0e18e8; }
-  #card .desc { color:#e0dce5; scrollbar-color:var(--world-accent) transparent; }
+  #card .desc { color:#e0dce5; line-height:1.68; scrollbar-color:var(--world-accent) transparent; }
+  #card .desc.rich h4 { color:var(--world-accent); font:600 17px/1.25 Georgia,serif; }
+  #card .desc.rich blockquote { border-color:var(--world-accent); }
   #card .gal img { opacity:.93; border-radius:5px; }
   #card .row a, #card .row button { background:#181825; border-color:#383749; }
   #card .row a:hover, #card .row button:hover { border-color:var(--world-accent); }
@@ -97,7 +99,7 @@
     .world-picker { left:14px; bottom:14px; }
     body:has(#card.open) .world-picker { visibility:hidden; }
     #card { right:12px; bottom:12px; width:auto; padding-inline:14px; }
-    #card .cover { height:clamp(52px,10vh,95px); margin-inline:-14px; }
+    #card .cover { height:clamp(62px,12vh,110px); margin-inline:-14px; }
     #card .gal img { height:45px; }
   }
   @media(prefers-reduced-motion:reduce) { #card, #hint { transition:none; } }
@@ -254,6 +256,28 @@
         ellipse(0.61, 0.61, 0, 0, 0.55);
         layer.setLineDash([]);
         ellipse(0.67, 0.67, 0, 1, 0.35);
+        break;
+      case "shield": {
+        const rim = layer.createRadialGradient(0, 0, 0.39, 0, 0, 0.74);
+        rim.addColorStop(0, "transparent");
+        rim.addColorStop(0.70, ink(0, 0.22));
+        rim.addColorStop(0.82, ink(1, 0.48));
+        rim.addColorStop(1, "transparent");
+        layer.fillStyle = rim;
+        layer.fillRect(-0.75, -0.75, 1.5, 1.5);
+        for (let i = 0; i < 6; i++) {
+          const angle = i * Math.PI / 3;
+          ellipse(0.68, 0.68, 0, 0, 0.62, angle + 0.06, angle + 0.91);
+        }
+        ellipse(0.72, 0.12, -0.41, 1, 0.47, 0.1, 3.04);
+        glow(layer, -0.48, -0.48, 0.20, ink(1, 0.85));
+        glow(layer, 0.66, -0.12, 0.13, ink(2, 0.76));
+        break;
+      }
+      case "obsidian":
+        ellipse(0.83, 0.22, -0.42, 1, 0.42, 0.13, 3.13);
+        ellipse(0.97, 0.29, -0.42, 2, 0.47, 3.30, 5.85);
+        glow(layer, -0.63, 0.24, 0.22, ink(1, 0.36));
         break;
       case "accretion":
         layer.lineWidth = 0.033;
@@ -562,40 +586,61 @@
     layer.tile = tile.canvas;
   }
 
-  // --- туманности и рукава в мировых координатах
-  const nebulae = [];
+  // The wide shot and map share the same pre-rendered spiral.
   const arms = G.arms || 3, R = Math.max(900, G.radius || 1500);
-  for (let a = 0; a < arms; a++) for (let k = 0; k < 14; k++) {
-    const t = k / 13, ang = a * 2 * Math.PI / arms + t * 3.2, rad = 120 + t * R;
-    nebulae.push({ x: Math.cos(ang) * rad + (rnd() - .5) * 260, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 220,
-      r: 260 + rnd() * 420, hue: [265, 220, 300, 195][(a + k) % 4], a: 0.05 + rnd() * 0.07 });
-  }
-  const dust = Array.from({ length: Math.min(3000, Math.round(900 * R / 1500)) }, () => {
-    const a = Math.floor(rnd() * arms), t = Math.pow(rnd(), 0.8), ang = a * 2 * Math.PI / arms + t * 3.2 + (rnd() - .5) * 0.5;
-    const rad = 60 + t * R * 1.1;
-    return { x: Math.cos(ang) * rad + (rnd() - .5) * 180, y: Math.sin(ang) * rad * 0.75 + (rnd() - .5) * 160, r: 0.6 + rnd() * 1.8, a: 0.2 + rnd() * 0.6 };
-  });
-
-  // Туманности и пыль неподвижны в мировых координатах: рисуем их один раз.
-  const galaxyRadius = R * 1.2 + 900;
+  const galaxyRadius = R * 1.24 + 900;
   const galaxy = canvasLayer(1536);
   galaxy.translate(768, 768);
   galaxy.scale(768 / galaxyRadius, 768 / galaxyRadius);
+  galaxy.rotate(-0.22);
+  galaxy.scale(1, 0.72);
+
+  const armPoint = (arm, t, offset = 0) => {
+    const angle = arm * 2 * Math.PI / arms + t * 3.65 + offset;
+    const radius = R * (0.06 + t * 1.06);
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+  };
+  const clouds = [
+    "rgba(68,92,208,.17)", "rgba(56,142,208,.15)", "rgba(123,82,207,.16)",
+  ];
+  glow(galaxy, 0, 0, R * 1.04, "rgba(52,44,122,.22)");
   galaxy.globalCompositeOperation = "lighter";
-  glow(galaxy, 0, 0, Math.max(700, R * 0.45), "rgba(255,205,205,.3)");
-  glow(galaxy, 0, 0, R * 0.14, "rgba(255,208,163,.65)");
-  glow(galaxy, 0, 0, R * 0.035, "rgba(255,237,204,.86)");
-  for (const n of nebulae) {
-    glow(galaxy, n.x, n.y, n.r * 1.55, `hsla(${n.hue},77%,48%,${n.a * 0.50})`);
-    glow(galaxy, n.x, n.y, n.r, `hsla(${n.hue},72%,55%,${n.a})`);
-    glow(galaxy, n.x + n.r * 0.28, n.y - n.r * 0.14, n.r * 0.66,
-      `hsla(${(n.hue + 42) % 360},66%,62%,${n.a * 0.48})`);
+  for (let arm = 0; arm < arms; arm++) {
+    for (let i = 0; i < 38; i++) {
+      const t = i / 37;
+      const [x, y] = armPoint(arm, t, (rnd() - 0.5) * 0.28);
+      galaxy.globalAlpha = (0.76 - t * 0.45) * (0.5 + rnd() * 0.5);
+      glow(galaxy, x, y, R * (0.14 + rnd() * 0.15), clouds[arm % clouds.length]);
+      glow(galaxy, x, y, R * (0.045 + rnd() * 0.075), i % 6
+        ? "rgba(108,171,248,.13)" : "rgba(218,110,170,.20)");
+    }
   }
-  galaxy.fillStyle = "rgba(220,210,255,.32)";
-  for (const d of dust) {
-    galaxy.globalAlpha = d.a;
-    galaxy.beginPath(); galaxy.arc(d.x, d.y, d.r * 2.4 * Math.max(1, R / 6500), 0, 2 * Math.PI); galaxy.fill();
+
+  // Dark lanes break the rim of each arm, with tiny clusters on the lit side.
+  galaxy.globalCompositeOperation = "destination-out";
+  for (let arm = 0; arm < arms; arm++) {
+    for (let i = 0; i < 55; i++) {
+      const t = 0.15 + 0.85 * i / 54;
+      const [x, y] = armPoint(arm, t, 0.15 + (rnd() - 0.5) * 0.11);
+      galaxy.globalAlpha = (0.35 + rnd() * 0.5) * (1 - t * 0.76);
+      glow(galaxy, x, y, R * (0.035 + rnd() * 0.028), "rgba(0,0,0,.72)");
+    }
   }
+
+  galaxy.globalCompositeOperation = "lighter";
+  galaxy.fillStyle = "#b7d9ff";
+  for (let i = 0; i < 4900; i++) {
+    const t = rnd() ** 0.87;
+    const [x, y] = armPoint(i % arms, t, (rnd() + rnd() - 1) * (0.23 + t * 0.11));
+    const size = R * (0.00027 + rnd() ** 5 * 0.001);
+    galaxy.globalAlpha = (0.17 + rnd() * 0.55) * (1 - t * 0.67);
+    galaxy.fillRect(x, y, size, size);
+  }
+  galaxy.globalAlpha = 1;
+  glow(galaxy, 0, 0, R * 0.38, "rgba(236,145,113,.31)");
+  glow(galaxy, 0, 0, R * 0.18, "rgba(255,193,131,.58)");
+  glow(galaxy, 0, 0, R * 0.056, "rgba(255,221,174,.58)");
+  glow(galaxy, 0, 0, R * 0.014, "rgba(255,244,220,.88)");
 
   const mapMode = document.getElementById("map-mode");
   const landmarkControls = document.getElementById("landmark-controls");
@@ -779,7 +824,7 @@
     // Cache each sheet of galaxies so a frame only composites four images.
     const sheetSize = 2048;
     const depths = [
-      { count: 4200, min: 4, max: 14, speed: 2.0, fade: 0.79, opacity: 0.50 },
+      { count: 4200, min: 4, max: 14, speed: 1.6, fade: 0.82, opacity: 0.60 },
       { count: 1600, min: 8, max: 30, speed: 3.6, fade: 0.70, opacity: 0.68 },
       { count: 380, min: 16, max: 58, speed: 5.0, fade: 0.63, opacity: 0.85 },
       { count: 96, min: 30, max: 108, speed: 6.8, fade: 0.54, opacity: 0.95 },
@@ -832,7 +877,7 @@
       else {
         const view = bounds();
         const travel = Math.max(0, (progress - 0.08) / 0.92);
-        const easing = travel * travel * (3 - 2 * travel);
+        const easing = travel ** 1.45 * (2.45 - 1.45 * travel);
         cam.x = view.x * easing;
         cam.y = view.y * easing;
         cam.z = view.z / arrivalDistance ** (1 - easing);
@@ -866,6 +911,7 @@
     const radius = galaxyRadius * cam.z;
     if (deepField) drawDeepField(progress, cx, cy);
     if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
+      ctx.globalAlpha = selected < 0 ? 1 : 0.48;
       ctx.drawImage(galaxy.canvas, cx - radius, cy - radius, radius * 2, radius * 2);
     }
 
@@ -881,13 +927,15 @@
       const extent = 4 / 3 * Math.max(w, h);
       if (sx + extent < 0 || sx - extent > W || sy + extent < 0 || sy - extent > H) return;
       const fxA = Math.min(1, Math.max(0, (w - 100) / 150));
-      const art = p.scene ??= makePlanetLayer(p);
       const halo = w * 4 / 3;
       ctx.globalCompositeOperation = "lighter";
       const dimmed = selected >= 0 && i !== selected;
       const arrivalAlpha = deepField ? (progress - 0.70) / 0.30 : 1;
-      ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.22 : i === selected ? 1 : i === hovered ? 0.92 : 0.78);
-      ctx.drawImage(art, sx - halo, sy - halo, halo * 2, halo * 2);
+      if (w >= 36) {
+        const art = p.scene ??= makePlanetLayer(p);
+        ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.22 : i === selected ? 1 : i === hovered ? 0.92 : 0.78);
+        ctx.drawImage(art, sx - halo, sy - halo, halo * 2, halo * 2);
+      }
       ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.55 : 1);
       ctx.globalCompositeOperation = "screen";
       ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
@@ -1036,7 +1084,7 @@
     const bottom = mobile ? H - card.offsetHeight - 12 : H;
     const top = 62;
     const mark = localLandmarks.get(p.id);
-    const pad = p.size * 0.58;
+    const pad = p.size * (p.effect === "shield" ? 0.74 : 0.58);
     const minX = mark ? Math.min(p.x - pad, mark.x - mark.radius) : p.x - pad;
     const maxX = mark ? Math.max(p.x + pad, mark.x + mark.radius) : p.x + pad;
     const minY = mark ? Math.min(p.y - pad, mark.y - mark.radius * 1.3) : p.y - pad;
