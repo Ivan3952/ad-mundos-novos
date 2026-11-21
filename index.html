@@ -583,6 +583,8 @@
   galaxy.scale(768 / galaxyRadius, 768 / galaxyRadius);
   galaxy.globalCompositeOperation = "lighter";
   glow(galaxy, 0, 0, Math.max(700, R * 0.45), "rgba(255,205,205,.3)");
+  glow(galaxy, 0, 0, R * 0.14, "rgba(255,208,163,.65)");
+  glow(galaxy, 0, 0, R * 0.035, "rgba(255,237,204,.86)");
   for (const n of nebulae) {
     glow(galaxy, n.x, n.y, n.r * 1.55, `hsla(${n.hue},77%,48%,${n.a * 0.50})`);
     glow(galaxy, n.x, n.y, n.r, `hsla(${n.hue},72%,55%,${n.a})`);
@@ -592,7 +594,7 @@
   galaxy.fillStyle = "rgba(220,210,255,.32)";
   for (const d of dust) {
     galaxy.globalAlpha = d.a;
-    galaxy.beginPath(); galaxy.arc(d.x, d.y, d.r * 2.4, 0, 2 * Math.PI); galaxy.fill();
+    galaxy.beginPath(); galaxy.arc(d.x, d.y, d.r * 2.4 * Math.max(1, R / 6500), 0, 2 * Math.PI); galaxy.fill();
   }
 
   const mapMode = document.getElementById("map-mode");
@@ -747,11 +749,13 @@
 
   const arrival = document.getElementById("arrival");
   const skipArrival = document.getElementById("skip-arrival");
-  const arrivalDuration = 5000;
+  const arrivalDuration = 9000;
+  const arrivalDistance = 1800;
   let arrivalStart = null, deepField = null;
   function makeDeepField() {
-    const palettes = [["#e6b3e9", "#7179fc"], ["#ffe0ae", "#b8527b"], ["#ccf3ff", "#588fc9"]];
-    const sprites = Array.from({ length: 9 }, (_, i) => {
+    const palettes = [["#e6b3e9", "#7179fc"], ["#ffe0ae", "#b8527b"], ["#ccf3ff", "#588fc9"],
+      ["#fff0d8", "#c78559"], ["#e2d9ff", "#6966ad"], ["#f6dece", "#b4a4a0"]];
+    const sprites = Array.from({ length: 24 }, (_, i) => {
       const layer = canvasLayer(160);
       const [core, arm] = palettes[i % palettes.length];
       layer.translate(80, 80);
@@ -772,15 +776,24 @@
       glow(layer, 0, 0, 10, "#fff4e8");
       return layer.canvas;
     });
-    return {
-      center: sprites[2],
-      neighbors: Array.from({ length: 38 }, (_, i) => {
-        const angle = i * 2.39996;
-        const r = 0.16 + 0.69 * Math.sqrt((i + 0.5) / 38);
-        return { x: Math.cos(angle) * r, y: Math.sin(angle) * r,
-          size: 0.015 + rnd() * 0.078, sprite: sprites[i % sprites.length] };
-      })
-    };
+    // Cache each sheet of galaxies so a frame only composites four images.
+    const sheetSize = 2048;
+    const depths = [
+      { count: 4200, min: 4, max: 14, speed: 2.0, fade: 0.79, opacity: 0.50 },
+      { count: 1600, min: 8, max: 30, speed: 3.6, fade: 0.70, opacity: 0.68 },
+      { count: 380, min: 16, max: 58, speed: 5.0, fade: 0.63, opacity: 0.85 },
+      { count: 96, min: 30, max: 108, speed: 6.8, fade: 0.54, opacity: 0.95 },
+    ];
+    return depths.map(depth => {
+      const sheet = canvasLayer(sheetSize);
+      for (let i = 0; i < depth.count; i++) {
+        const x = rnd() * sheetSize, y = rnd() * sheetSize;
+        const size = depth.min + (depth.max - depth.min) * rnd() ** 2;
+        sheet.globalAlpha = 0.36 + rnd() * 0.64;
+        sheet.drawImage(sprites[i % sprites.length], x - size / 2, y - size / 2, size, size);
+      }
+      return { ...depth, image: sheet.canvas };
+    });
   }
 
   function finishArrival() {
@@ -796,18 +809,15 @@
   skipArrival.onclick = finishArrival;
 
   function drawDeepField(progress, cx, cy) {
-    const spread = Math.exp(progress * 4.7);
-    const span = Math.max(W, H);
-    ctx.globalAlpha = Math.max(0, 1 - progress * 1.8);
-    for (const item of deepField.neighbors) {
-      const x = cx + item.x * W * spread, y = cy + item.y * H * spread;
-      const size = item.size * span * spread;
-      if (x + size < 0 || x - size > W || y + size < 0 || y - size > H) continue;
-      ctx.drawImage(item.sprite, x - size, y - size, size * 2, size * 2);
+    const travel = Math.max(0, (progress - 0.08) / 0.92);
+    for (const depth of deepField) {
+      const opacity = depth.opacity * Math.max(0, Math.min(1, (depth.fade - progress) / 0.20));
+      if (!opacity) continue;
+      const spread = Math.exp(travel * depth.speed);
+      const side = Math.max(W, H) * 1.18 * spread;
+      ctx.globalAlpha = opacity;
+      ctx.drawImage(depth.image, cx - side / 2, cy - side / 2, side, side);
     }
-    const size = Math.min(W, H) * 0.105 * Math.exp(progress * 2.9);
-    ctx.globalAlpha = Math.max(0, 1 - progress * 1.65);
-    ctx.drawImage(deepField.center, cx - size, cy - size, size * 2, size * 2);
     ctx.globalAlpha = 1;
   }
 
@@ -821,10 +831,11 @@
       if (progress === 1) finishArrival();
       else {
         const view = bounds();
-        cam.x = view.x * progress;
-        cam.y = view.y * progress;
-        const easing = progress * progress * (3 - 2 * progress);
-        cam.z = view.z * Math.exp(-4.5 * (1 - easing));
+        const travel = Math.max(0, (progress - 0.08) / 0.92);
+        const easing = travel * travel * (3 - 2 * travel);
+        cam.x = view.x * easing;
+        cam.y = view.y * easing;
+        cam.z = view.z / arrivalDistance ** (1 - easing);
       }
     }
     if (!deepField && !needsDraw && !animated && !target && cam.x === lastFrame.x && cam.y === lastFrame.y &&
@@ -853,10 +864,7 @@
     }
     const [cx, cy] = toScreen(0, 0);
     const radius = galaxyRadius * cam.z;
-    if (deepField) {
-      drawDeepField(progress, cx, cy);
-      ctx.globalAlpha = Math.max(0, Math.min(1, (progress - 0.30) * 3));
-    }
+    if (deepField) drawDeepField(progress, cx, cy);
     if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
       ctx.drawImage(galaxy.canvas, cx - radius, cy - radius, radius * 2, radius * 2);
     }
