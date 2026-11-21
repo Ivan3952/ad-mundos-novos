@@ -22,7 +22,7 @@ works.json — список работ:
 ]
 Зависимость: Pillow (pip install pillow).
 """
-import argparse, hashlib, json, math, os, random, re, sys
+import argparse, hashlib, json, math, os, random, re, shutil, sys
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -68,7 +68,8 @@ def layout(planets, seed):
         if g not in groups: groups.append(g)
     free = [p for p in planets if p.get("x") is None or p.get("y") is None]
     # избранные — ближе к ядру
-    free.sort(key=lambda p: (not p.get("featured"), hrand(p["id"], seed)))
+    order = {p["id"]: i for i, p in enumerate(planets)}
+    free.sort(key=lambda p: (not p.get("featured"), order[p["id"]]))
 
     if len(groups) >= 2:
         arms = len(groups)
@@ -142,11 +143,29 @@ def main():
         if args.force or not os.path.exists(dst) or os.path.getmtime(dst) < os.path.getmtime(src):
             s = prepare(src, dst)
             print(f"  img/{pid}.jpg" + ("  (светлый фон — приглушён)" if s else ""))
+        cv = os.path.join(IMG, pid, "cover.jpg")
+        if args.force or not os.path.exists(cv) or os.path.getmtime(cv) < os.path.getmtime(src):
+            os.makedirs(os.path.dirname(cv), exist_ok=True)
+            im = Image.open(src).convert("RGB"); im.thumbnail((1400, 1400), Image.LANCZOS)
+            im.save(cv, "JPEG", quality=84, optimize=True, progressive=True)
         size = w.get("size") or round(420 + hrand(pid, "size") * 200)
+        gallery = []
+        for k, g in enumerate(w.get("gallery") or []):
+            gs = os.path.join(SRC, g)
+            if not os.path.exists(gs):
+                print(f"! нет файла галереи: source/{g}"); continue
+            os.makedirs(os.path.join(IMG, pid), exist_ok=True)
+            gd = os.path.join(IMG, pid, f"{k}.jpg")
+            if args.force or not os.path.exists(gd) or os.path.getmtime(gd) < os.path.getmtime(gs):
+                im = Image.open(gs).convert("RGB"); im.thumbnail((1400, 1400), Image.LANCZOS)
+                im.save(gd, "JPEG", quality=84, optimize=True, progressive=True)
+            gallery.append(f"img/{pid}/{k}.jpg")
         planets.append({
             "id": pid, "img": f"img/{pid}.jpg", "x": w.get("x"), "y": w.get("y"), "size": size,
             "name": w.get("name") or "Без названия", "author": w.get("author") or "",
-            "link": w.get("link") or "", "description": w.get("description") or "",
+            "link": w.get("link") or "", "article": w.get("article") or "",
+            "description": w.get("description") or "", "gallery": gallery,
+            "cover": f"img/{pid}/cover.jpg",
             "group": w.get("group") or "", "featured": bool(w.get("featured")),
         })
 
@@ -155,15 +174,18 @@ def main():
         p["x"], p["y"] = round(p["x"]), round(p["y"])
         if not p["featured"]: p.pop("featured")
         if not p["group"]: p.pop("group")
+        if not p["gallery"]: p.pop("gallery")
+        if not p["article"]: p.pop("article")
     data = {"title": TITLE, "subtitle": SUBTITLE, "arms": arms, "radius": round(extent), "planets": planets}
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("// Сгенерировано tools/build.py — правки вносить в data/works.json\n")
         f.write("window.GALAXY = " + json.dumps(data, ensure_ascii=False, indent=2) + ";\n")
     # удалить картинки планет, которых больше нет в works.json
-    keep = {p["id"] + ".jpg" for p in planets}
+    keep = {p["id"] + ".jpg" for p in planets} | {p["id"] for p in planets}
     for f in os.listdir(IMG):
-        if f.endswith(".jpg") and f not in keep:
-            os.remove(os.path.join(IMG, f)); print(f"  удалено img/{f}")
+        if f not in keep:
+            fp = os.path.join(IMG, f)
+            shutil.rmtree(fp) if os.path.isdir(fp) else os.remove(fp); print(f"  удалено img/{f}")
     print(f"Готово: {len(planets)} планет, рукавов: {arms}, радиус: {round(extent)}")
 
 if __name__ == "__main__":
