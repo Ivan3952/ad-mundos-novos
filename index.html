@@ -101,11 +101,26 @@
     #card .gal img { height:45px; }
   }
   @media(prefers-reduced-motion:reduce) { #card, #hint { transition:none; } }
+
+  #map-mode { margin-top:7px; color:var(--accent); font-size:11px; }
+  #landmark-controls { position:fixed; inset:0; pointer-events:none; }
+  .landmark { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; color:#f8eee4; background:#151321; border:1px solid #736077; border-radius:20px; padding:6px 10px; white-space:nowrap; font:11px system-ui; cursor:pointer; }
+  .landmark[hidden], #landmark-note[hidden] { display:none; }
+  .landmark:hover { background:#38263b; }
+  #landmark-note { position:fixed; top:100px; left:50%; transform:translateX(-50%); z-index:3; width:min(350px,calc(100vw - 24px)); padding:16px; background:#121321; color:var(--fg); border:1px solid #736077; border-radius:12px; box-shadow:0 12px 36px #0008; }
+  #landmark-note h2 { margin:0 26px 6px 0; font:22px Georgia,serif; }
+  #landmark-note p { margin:0; font:13px/1.5 system-ui; }
+  #landmark-close { position:absolute; top:8px; right:9px; color:inherit; background:none; border:0; font-size:24px; cursor:pointer; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<header><h1 id="t"></h1><p id="st"></p></header>
+<header><h1 id="t"></h1><p id="st"></p><p id="map-mode"></p></header>
+<div id="landmark-controls"></div>
+<aside id="landmark-note" aria-labelledby="landmark-title" hidden>
+  <button id="landmark-close" aria-label="Закрыть пояснение">×</button>
+  <h2 id="landmark-title"></h2><p id="landmark-description"></p>
+</aside>
 <div class="tools">
   <button id="zin" title="Приблизить">+</button>
   <button id="zout" title="Отдалить">−</button>
@@ -506,10 +521,34 @@
     galaxy.beginPath(); galaxy.arc(d.x, d.y, d.r * 2.4, 0, 2 * Math.PI); galaxy.fill();
   }
 
+  const mapMode = document.getElementById("map-mode");
+  const landmarkControls = document.getElementById("landmark-controls");
+  const landmarkNote = document.getElementById("landmark-note");
+  const closeNote = document.getElementById("landmark-close");
+  let openMark = null;
+  function dismissNote(restoreFocus = false) {
+    if (restoreFocus && openMark && !openMark.hidden) openMark.focus();
+    landmarkNote.hidden = true;
+    openMark = null;
+  }
+  closeNote.onclick = () => dismissNote(true);
+
   const planetsById = new Map(P.map(p => [p.id, p]));
   const landmarks = (G.landmarks || []).map(mark => {
     const planet = planetsById.get(mark.planet);
-    return { ...mark, x: planet.x + mark.dx, y: planet.y + mark.dy, sprite: makeLandmark(mark) };
+    const button = document.createElement("button");
+    button.className = "landmark";
+    button.textContent = mark.label;
+    button.hidden = true;
+    button.onclick = () => {
+      openMark = button;
+      document.getElementById("landmark-title").textContent = mark.label;
+      document.getElementById("landmark-description").textContent = mark.description;
+      landmarkNote.hidden = false;
+      closeNote.focus();
+    };
+    landmarkControls.append(button);
+    return { ...mark, x: planet.x + mark.dx, y: planet.y + mark.dy, sprite: makeLandmark(mark), button };
   });
   const localLandmarks = new Map(landmarks.filter(mark => mark.kind !== "void").map(mark => [mark.planet, mark]));
 
@@ -562,10 +601,21 @@
 
   function drawLandmarks() {
     const current = P[selected];
+    const local = cam.z >= Math.max(current ? 0 : 0.14, bounds().z * 1.65);
+    const mode = local ? "Локальная карта · ориентиры с пояснениями" : "Общий план · приблизьте карту";
+    if (mapMode.textContent !== mode) mapMode.textContent = mode;
     for (const mark of landmarks) {
-      if (current && mark.planet !== current.id && mark.kind !== "void") continue;
       const [x, y] = toScreen(mark.x, mark.y);
       const r = mark.radius * cam.z;
+      const voidRegion = mark.kind === "void";
+      const show = local && (!current || mark.planet === current.id);
+      const labelY = Math.max(66, y - (voidRegion ? Math.min(r * 0.36, 64) : r + 10));
+      mark.button.hidden = !show || x < 46 || x > W - 46 || labelY > H - 24 || y < 0;
+      if (!mark.button.hidden) {
+        mark.button.style.left = x + "px";
+        mark.button.style.top = labelY + "px";
+      } else if (openMark === mark.button) dismissNote();
+      if (!show && !voidRegion) continue;
       if (x + r < 0 || x - r > W || y + r < 0 || y - r > H) continue;
       ctx.drawImage(mark.sprite, x - r, y - r, r * 2, r * 2);
       if (mark.kind === "black-hole") {
@@ -576,12 +626,7 @@
         ctx.arc(x, y, Math.hypot(mark.dx, mark.dy) * cam.z, angle - 0.48, angle + 0.48);
         ctx.stroke();
       }
-      if (current?.id === mark.planet || (!current && (W >= 600 || r >= 9))) {
-        ctx.fillStyle = mark.kind === "void" ? "#a6a0be" : "#e5d7d2";
-        ctx.font = "11px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(mark.label, x, y + (mark.kind === "void" ? -r * 0.36 : -r - 5));
-      }
+
     }
     ctx.globalAlpha = 1;
   }
@@ -716,6 +761,7 @@
   const hint = document.getElementById("hint");
   const hideHint = () => { hint.style.opacity = 0; };
   function select(i) {
+    dismissNote();
     selected = i;
     picker.value = i < 0 ? "" : String(i);
     if (i < 0) { card.classList.remove("open"); history.replaceState(null, "", location.pathname); return; }
@@ -816,6 +862,7 @@
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   cv.addEventListener("wheel", e => { e.preventDefault(); hideHint(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
   addEventListener("keydown", e => {
+    if (e.key === "Escape" && !landmarkNote.hidden) { dismissNote(true); return; }
     if (e.target === picker) return;
     if (lb.classList.contains("open")) {
       if (e.key === "Escape") closeLb();
