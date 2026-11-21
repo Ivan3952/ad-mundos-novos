@@ -123,6 +123,11 @@
   #tour-position { color:var(--world-accent); }
   #tour-stop .tour-actions { display:flex; gap:6px; }
   @media(max-height:650px) { #card:has(#tour-stop:not([hidden])) .cover { display:none; } }
+
+  body.arriving > :is(header,.tools,.world-picker,#hint) { visibility:hidden; }
+  #arrival { position:fixed; inset:0; display:grid; align-items:end; pointer-events:auto; }
+  #arrival[hidden] { display:none; }
+  #arrival button { justify-self:center; margin-bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; color:#f8f3ec; background:#10111edb; border:1px solid #65566c; border-radius:24px; padding:11px 19px; font:13px system-ui; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -170,6 +175,7 @@
 <div id="lb"><img id="lbi" alt=""><button id="lbx">×</button><button id="lbp">‹</button><button id="lbn">›</button><div id="lbc"></div></div>
 <div id="hint">Тяни, чтобы лететь · колесо или щипок — зум · нажми на планету</div>
 
+<div id="arrival" hidden><button type="button" id="skip-arrival">Пропустить вступление</button></div>
 <script src="planets.js"></script>
 <script>
 (() => {
@@ -739,10 +745,89 @@
     return { x: (a + c) / 2, y: (b + d) / 2, z: Math.min(W / (c - a + 200), H / (d - b + 200)) };
   }
 
+  const arrival = document.getElementById("arrival");
+  const skipArrival = document.getElementById("skip-arrival");
+  const arrivalDuration = 5000;
+  let arrivalStart = null, deepField = null;
+  function makeDeepField() {
+    const palettes = [["#e6b3e9", "#7179fc"], ["#ffe0ae", "#b8527b"], ["#ccf3ff", "#588fc9"]];
+    const sprites = Array.from({ length: 9 }, (_, i) => {
+      const layer = canvasLayer(160);
+      const [core, arm] = palettes[i % palettes.length];
+      layer.translate(80, 80);
+      layer.rotate(i * 1.42);
+      layer.scale(1, 0.37 + (i % 4) * 0.15);
+      glow(layer, 0, 0, 67, arm + "76");
+      const arms = i % 3 + 2;
+      for (let j = 0; j < 960; j++) {
+        const d = Math.pow(rnd(), 1.5);
+        const angle = (j % arms) * 2 * Math.PI / arms + d * 5.4 + (rnd() - 0.5) * (0.58 - d * 0.32);
+        const r = 5 + d * 67;
+        layer.fillStyle = j % 7 ? arm : core;
+        layer.globalAlpha = (1 - d * 0.73) * (0.17 + rnd() * 0.49);
+        layer.fillRect(Math.cos(angle) * r, Math.sin(angle) * r, 0.7 + rnd() * 1.6, 1.4);
+      }
+      layer.globalAlpha = 1;
+      glow(layer, 0, 0, 27, core);
+      glow(layer, 0, 0, 10, "#fff4e8");
+      return layer.canvas;
+    });
+    return {
+      center: sprites[2],
+      neighbors: Array.from({ length: 38 }, (_, i) => {
+        const angle = i * 2.39996;
+        const r = 0.16 + 0.69 * Math.sqrt((i + 0.5) / 38);
+        return { x: Math.cos(angle) * r, y: Math.sin(angle) * r,
+          size: 0.015 + rnd() * 0.078, sprite: sprites[i % sprites.length] };
+      })
+    };
+  }
+
+  function finishArrival() {
+    const restoreFocus = document.activeElement === skipArrival;
+    arrival.hidden = true;
+    deepField = null;
+    document.body.classList.remove("arriving");
+    Object.assign(cam, bounds());
+    needsDraw = true;
+    if (restoreFocus) document.getElementById("home").focus({ preventScroll: true });
+    setTimeout(hideHint, 7000);
+  }
+  skipArrival.onclick = finishArrival;
+
+  function drawDeepField(progress, cx, cy) {
+    const spread = Math.exp(progress * 4.7);
+    const span = Math.max(W, H);
+    ctx.globalAlpha = Math.max(0, 1 - progress * 1.8);
+    for (const item of deepField.neighbors) {
+      const x = cx + item.x * W * spread, y = cy + item.y * H * spread;
+      const size = item.size * span * spread;
+      if (x + size < 0 || x - size > W || y + size < 0 || y - size > H) continue;
+      ctx.drawImage(item.sprite, x - size, y - size, size * 2, size * 2);
+    }
+    const size = Math.min(W, H) * 0.105 * Math.exp(progress * 2.9);
+    ctx.globalAlpha = Math.max(0, 1 - progress * 1.65);
+    ctx.drawImage(deepField.center, cx - size, cy - size, size * 2, size * 2);
+    ctx.globalAlpha = 1;
+  }
+
   // --- отрисовка
   function draw(time) {
     requestAnimationFrame(draw);
-    if (!needsDraw && !animated && !target && cam.x === lastFrame.x && cam.y === lastFrame.y &&
+    let progress = 1;
+    if (deepField) {
+      arrivalStart ??= time;
+      progress = Math.min(1, (time - arrivalStart) / arrivalDuration);
+      if (progress === 1) finishArrival();
+      else {
+        const view = bounds();
+        cam.x = view.x * progress;
+        cam.y = view.y * progress;
+        const easing = progress * progress * (3 - 2 * progress);
+        cam.z = view.z * Math.exp(-4.5 * (1 - easing));
+      }
+    }
+    if (!deepField && !needsDraw && !animated && !target && cam.x === lastFrame.x && cam.y === lastFrame.y &&
         cam.z === lastFrame.z && hovered === lastFrame.hovered && selected === lastFrame.selected) return;
     if (target) {
       const k = 0.09;
@@ -768,11 +853,17 @@
     }
     const [cx, cy] = toScreen(0, 0);
     const radius = galaxyRadius * cam.z;
+    if (deepField) {
+      drawDeepField(progress, cx, cy);
+      ctx.globalAlpha = Math.max(0, Math.min(1, (progress - 0.30) * 3));
+    }
     if (cx + radius > 0 && cx - radius < W && cy + radius > 0 && cy - radius < H) {
       ctx.drawImage(galaxy.canvas, cx - radius, cy - radius, radius * 2, radius * 2);
     }
 
-    drawLandmarks();
+    ctx.globalAlpha = 1;
+    if (deepField && progress < 0.70) return;
+    if (!deepField) drawLandmarks();
 
     // планеты: режим screen делает чёрный фон картинки прозрачным
     P.forEach((p, i) => {
@@ -786,9 +877,10 @@
       const halo = w * 4 / 3;
       ctx.globalCompositeOperation = "lighter";
       const dimmed = selected >= 0 && i !== selected;
-      ctx.globalAlpha = dimmed ? 0.22 : i === selected ? 1 : i === hovered ? 0.92 : 0.78;
+      const arrivalAlpha = deepField ? (progress - 0.70) / 0.30 : 1;
+      ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.22 : i === selected ? 1 : i === hovered ? 0.92 : 0.78);
       ctx.drawImage(art, sx - halo, sy - halo, halo * 2, halo * 2);
-      ctx.globalAlpha = dimmed ? 0.55 : 1;
+      ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.55 : 1);
       ctx.globalCompositeOperation = "screen";
       ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
       ctx.globalAlpha = 1;
@@ -1016,6 +1108,7 @@
     zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
   }, { passive: false });
   addEventListener("keydown", e => {
+    if (deepField && e.key === "Escape") { finishArrival(); return; }
     if (e.key === "Escape" && !landmarkNote.hidden) { dismissNote(true); return; }
     if (e.target === picker) return;
     if (lb.classList.contains("open")) {
@@ -1029,14 +1122,17 @@
     if (e.key === "ArrowLeft" && selected >= 0) select((selected - 1 + P.length) % P.length);
   });
   addEventListener("resize", resize);
-  addEventListener("hashchange", () => { const i = P.findIndex(p => p.id === location.hash.slice(1)); if (i >= 0 && i !== selected) select(i); });
+  addEventListener("hashchange", () => { const i = P.findIndex(p => p.id === location.hash.slice(1)); if (i >= 0 && i !== selected) { if (deepField) finishArrival(); select(i); } });
 
   resize();
-  Object.assign(cam, bounds()); cam.z *= 0.35; // старт издалека — и прилёт к галактике
-  target = bounds();
+  Object.assign(cam, bounds());
   const startId = location.hash.slice(1), si = P.findIndex(p => p.id === startId);
-  if (si >= 0) setTimeout(() => select(si), 400);
-  setTimeout(hideHint, 7000);
+  if (si >= 0) select(si);
+  if (!location.hash && !reducedMotion.matches) {
+    deepField = makeDeepField();
+    arrival.hidden = false;
+    document.body.classList.add("arriving");
+  } else setTimeout(hideHint, 7000);
   requestAnimationFrame(draw);
 })();
 </script>
