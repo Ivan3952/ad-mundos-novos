@@ -563,10 +563,10 @@
   function drawLandmarks() {
     const current = P[selected];
     for (const mark of landmarks) {
+      if (current && mark.planet !== current.id && mark.kind !== "void") continue;
       const [x, y] = toScreen(mark.x, mark.y);
       const r = mark.radius * cam.z;
       if (x + r < 0 || x - r > W || y + r < 0 || y - r > H) continue;
-      ctx.globalAlpha = current && mark.planet !== current.id && mark.kind !== "void" ? 0.45 : 1;
       ctx.drawImage(mark.sprite, x - r, y - r, r * 2, r * 2);
       if (mark.kind === "black-hole") {
         const angle = Math.atan2(mark.dy, mark.dx) + Math.PI;
