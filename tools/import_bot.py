@@ -103,7 +103,7 @@ def main():
         works.append({
             "id": f"w{wid}", "file": files[cover],
             "gallery": [f for i, f in enumerate(files) if i != cover],
-            "name": name or "Без названия", "author": author or "",
+            "name": name or "Без названия", "author": ov.get("author", author or ""),
             "description": ov.get("description", text), "descriptionLocked": "description" in ov,
             "link": link or "", "article": article or "",
             "group": ov.get("group", ""), "featured": bool(ov.get("featured")),
