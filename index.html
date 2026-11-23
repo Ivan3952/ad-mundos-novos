@@ -699,7 +699,9 @@
   const planetsById = new Map(P.map(p => [p.id, p]));
   const eriaScene = document.getElementById("eria-scene");
   const eriaEnter = document.getElementById("eria-enter");
-  const portalSprite = makeLandmark({kind:"black-hole"});
+  const portalScale = 3;
+  const portalWidth = (planet, zoom) => Math.max(40, planet.size * portalScale * zoom);
+  const portalSprite = makeLandmark({kind:"black-hole"}, 768);
   const eriaView = document.getElementById("eria-view");
   const eriaFigure = eriaView.querySelector("figure");
   const eriaCam = {x:0, y:0, scale:1};
@@ -775,22 +777,16 @@
       closeNote.focus();
     };
     landmarkControls.append(button);
-    return { ...mark, x: planet.x + mark.dx, y: planet.y + mark.dy, sprite: makeLandmark(mark), button };
+    return { ...mark, x: planet.x + mark.dx, y: planet.y + mark.dy, sprite: mark.kind === "void" ? null : makeLandmark(mark), button };
   });
   const localLandmarks = new Map(landmarks.filter(mark => mark.kind !== "void").map(mark => [mark.planet, mark]));
 
-  function makeLandmark(mark) {
-    const layer = canvasLayer(mark.kind === "void" ? 512 : 256);
+  function makeLandmark(mark, resolution = 256) {
+    const layer = canvasLayer(resolution);
     const half = layer.canvas.width / 2;
     layer.translate(half, half);
     layer.scale(half, half);
-    if (mark.kind === "void") {
-      const darkness = layer.createRadialGradient(0, 0, 0.72, 0, 0, 1);
-      darkness.addColorStop(0, "#020108");
-      darkness.addColorStop(1, "rgba(2,1,8,0)");
-      layer.fillStyle = darkness;
-      layer.fillRect(-1, -1, 2, 2);
-    } else if (mark.kind === "black-hole") {
+    if (mark.kind === "black-hole") {
       glow(layer, -0.13, 0.04, 0.85, "rgba(245,62,25,.65)");
       glow(layer, 0.23, -0.07, 0.66, "rgba(255,153,55,.45)");
       layer.rotate(-0.34);
@@ -857,13 +853,13 @@
       const r = mark.radius * cam.z;
       const voidRegion = mark.kind === "void";
       const show = local && (!current || mark.planet === current.id);
-      const labelY = Math.max(66, y - (voidRegion ? Math.min(r * 0.36, 64) : r + 10));
+      const labelY = Math.max(66, y - (voidRegion ? portalWidth(planetsById.get(mark.planet), cam.z) * 0.32 + 12 : r + 10));
       mark.button.hidden = !show || x < 46 || x > W - 46 || labelY > H - 24 || y < 0;
       if (!mark.button.hidden) {
         mark.button.style.left = x + "px";
         mark.button.style.top = labelY + "px";
       } else if (openMark === mark.button) dismissNote();
-      if (!show && !voidRegion) continue;
+      if (!show || !mark.sprite) continue;
       if (x + r < 0 || x - r > W || y + r < 0 || y - r > H) continue;
       ctx.drawImage(mark.sprite, x - r, y - r, r * 2, r * 2);
       if (mark.kind === "black-hole") {
@@ -1043,7 +1039,9 @@
     P.forEach((p, i) => {
       if (!p.ready) return;
       const [sx, sy] = toScreen(p.x, p.y);
-      const w = p.size * cam.z, h = w * p.im.naturalHeight / p.im.naturalWidth;
+      const portal = p.id === "w235";
+      const w = portal ? portalWidth(p, cam.z) : p.size * cam.z;
+      const h = portal ? w : w * p.im.naturalHeight / p.im.naturalWidth;
       const extent = 4 / 3 * Math.max(w, h);
       if (sx + extent < 0 || sx - extent > W || sy + extent < 0 || sy - extent > H) return;
       const fxA = Math.min(1, Math.max(0, (w - 100) / 150));
@@ -1059,9 +1057,8 @@
       ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.55 : 1);
       ctx.globalCompositeOperation = "screen";
       if (p.id === "w235") {
-        const side = Math.max(24, w);
         ctx.globalCompositeOperation = "source-over";
-        ctx.drawImage(portalSprite, sx - side / 2, sy - side / 2, side, side);
+        ctx.drawImage(portalSprite, sx - w / 2, sy - w / 2, w, w);
       }
       else ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
       ctx.globalAlpha = 1;
@@ -1106,7 +1103,7 @@
     let best = -1, bd = Infinity;
     P.forEach((p, i) => {
       const d = Math.hypot(wx - p.x, wy - p.y);
-      const radius = p.id === "w235" ? Math.max(p.size * 0.42, 14 / cam.z) : p.size * 0.42;
+      const radius = p.id === "w235" ? portalWidth(p, cam.z) * 0.45 / cam.z : p.size * 0.42;
       if (d < radius && d < bd) { bd = d; best = i; }
     });
     return best;
@@ -1211,7 +1208,7 @@
     const bottom = mobile ? H - card.offsetHeight - 12 : H;
     const top = 62;
     const mark = localLandmarks.get(p.id);
-    const pad = p.size * (p.effect === "shield" ? 0.74 : 0.58);
+    const pad = p.size * (p.id === "w235" ? portalScale : 1) * (p.effect === "shield" ? 0.74 : 0.58);
     const minX = mark ? Math.min(p.x - pad, mark.x - mark.radius) : p.x - pad;
     const maxX = mark ? Math.max(p.x + pad, mark.x + mark.radius) : p.x + pad;
     const minY = mark ? Math.min(p.y - pad, mark.y - mark.radius * 1.3) : p.y - pad;
