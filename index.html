@@ -135,8 +135,16 @@
     #eria-scene[open] { display:grid; place-items:center; animation:eria-dark .5s ease-in both; }
     #eria-scene::backdrop { background:transparent; }
     #eria-scene figure { margin:0; text-align:center; }
-    #eria-planet { width:min(70vw,50vh,520px); aspect-ratio:1; display:grid; place-items:center; margin:auto; border-radius:50%; box-shadow:0 0 1px #bbb7d3; }
+    #eria-planet { width:min(70vw,50vh,520px); aspect-ratio:1; display:grid; place-items:center; margin:auto; position:relative; }
     #eria-planet img { width:100%; height:100%; object-fit:contain; border-radius:50%; animation:eria-dark 1s .4s both; }
+    #eria-read { position:absolute; inset:25%; border:0; background:transparent; pointer-events:auto; cursor:pointer; }
+    #eria-read:focus-visible { outline:2px solid #9bb8fc; outline-offset:2px; }
+    #eria-lore { box-sizing:border-box; width:min(92vw,560px); max-height:82dvh; padding:0; border:1px solid #424359; border-radius:12px; background:#10111a; color:#eeeaf7; }
+    #eria-lore::backdrop { background:#000a; }
+    #eria-lore header { position:sticky; inset:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 20px; background:#10111a; pointer-events:auto; }
+    #eria-lore h2 { position:static; margin:0; }
+    #eria-lore button { color:inherit; background:transparent; border:1px solid #555269; border-radius:6px; padding:7px 12px; cursor:pointer; }
+    #eria-lore-text { padding:0 20px 18px; line-height:1.6; }
     #eria-scene figcaption { margin-top:1.6rem; font:italic clamp(18px,3vw,26px) Georgia,serif; animation:eria-dark .9s .9s both; }
     #eria-scene h2 { position:absolute; top:20px; left:5vw; font:normal clamp(15px,3vw,22px) Georgia,serif; }
     #eria-view { position:absolute; inset:0; overflow:hidden; touch-action:none; user-select:none; cursor:grab; }
@@ -169,14 +177,18 @@
   <select id="world-picker"><option value="">Вся галактика</option></select>
 </div>
 <dialog id="eria-scene" aria-labelledby="eria-title">
-  <div id="eria-view"><figure><div id="eria-planet"><img src="img/w235.jpg" alt="Колыбель под Вуалью Звёзд"></div><figcaption>Приятного сна, Эрия.</figcaption></figure></div>
+  <div id="eria-view"><figure><div id="eria-planet"><img src="img/w235.jpg" alt="Колыбель под Вуалью Звёзд"><button id="eria-read" type="button" aria-label="Прочитать описание Колыбели"></button></div><figcaption>Приятного сна, Эрия.</figcaption></figure></div>
   <h2 id="eria-title">По ту сторону · Вселенная Эрия</h2>
   <div id="eria-actions">
     <button id="eria-minus" type="button" aria-label="Отдалить Колыбель">−</button>
     <button id="eria-plus" type="button" aria-label="Приблизить Колыбель">+</button>
     <button id="eria-home" type="button">К планете</button>
-    <button id="eria-back" type="button">Вернуться в атлас</button>
+    <button id="eria-back" type="button" autofocus>Вернуться в атлас</button>
   </div>
+</dialog>
+<dialog id="eria-lore" aria-labelledby="eria-lore-title">
+  <header><h2 id="eria-lore-title">Эрия · Колыбель</h2><button id="eria-lore-close" type="button">Закрыть</button></header>
+  <div id="eria-lore-text"></div>
 </dialog>
 <div id="card">
   <button class="cover" id="ccover" type="button" aria-label="Открыть иллюстрацию планеты"></button>
@@ -706,6 +718,19 @@
   const eriaFigure = eriaView.querySelector("figure");
   const eriaCam = {x:0, y:0, scale:1};
   const eriaPointers = new Map();
+  const eriaRead = document.getElementById("eria-read");
+  const eriaLore = document.getElementById("eria-lore");
+  const eriaWorld = planetsById.get("w235");
+  const eriaLoreText = document.getElementById("eria-lore-text");
+  if (eriaWorld?.descriptionHtml) eriaLoreText.innerHTML = eriaWorld.descriptionHtml;
+  else eriaLoreText.textContent = eriaWorld?.description || "";
+  function readEria() {
+    eriaLore.showModal();
+    eriaLore.scrollTop = 0;
+  }
+  eriaRead.onclick = e => { if (e.detail === 0) readEria(); };
+  document.getElementById("eria-lore-close").onclick = () => eriaLore.close();
+  let eriaTap = null;
   function paintEria() {
     const {x,y,scale} = eriaCam;
     eriaFigure.style.transform = `translate(${x}px,${y}px) scale(${scale}) translate(-50%,-50%)`;
@@ -729,17 +754,26 @@
   }
   eriaView.onpointerdown = e => {
     if (e.button !== 0 || eriaPointers.size >= 2) return;
+    eriaTap = !eriaPointers.size && e.target === eriaRead ? {id:e.pointerId,x:e.clientX,y:e.clientY} : null;
     eriaView.setPointerCapture(e.pointerId);
     eriaPointers.set(e.pointerId,{x:e.clientX-W/2,y:e.clientY-H/2});
   };
   eriaView.onpointermove = e => {
     if (!eriaPointers.has(e.pointerId)) return;
+    if (eriaTap && Math.hypot(e.clientX-eriaTap.x,e.clientY-eriaTap.y) > 7) eriaTap = null;
     const before = gesture();
     eriaPointers.set(e.pointerId,{x:e.clientX-W/2,y:e.clientY-H/2});
     const after = gesture();
     moveEria(before.x,before.y,after.x,after.y,before.span && after.span ? after.span/before.span : 1);
   };
-  eriaView.onlostpointercapture = e => eriaPointers.delete(e.pointerId);
+  eriaView.onpointerup = e => {
+    if (eriaTap?.id === e.pointerId && Math.hypot(e.clientX-eriaTap.x,e.clientY-eriaTap.y) <= 7) readEria();
+    eriaTap = null;
+  };
+  eriaView.onlostpointercapture = e => {
+    eriaPointers.delete(e.pointerId);
+    if (eriaTap?.id === e.pointerId) eriaTap = null;
+  };
   eriaView.addEventListener("wheel", e => {
     e.preventDefault();
     const x=e.clientX-W/2, y=e.clientY-H/2;
