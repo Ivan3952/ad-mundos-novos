@@ -3,7 +3,7 @@ window.GALAXY = {
   "title": "Ad mundos novos",
   "subtitle": "Галактика миров участников",
   "arms": 3,
-  "radius": 9694,
+  "radius": 8290,
   "landmarks": [
     {
       "kind": "black-hole",
@@ -564,8 +564,8 @@ window.GALAXY = {
     {
       "id": "w229",
       "img": "img/w229.jpg",
-      "x": 9413,
-      "y": -203,
+      "x": 1850,
+      "y": 130,
       "size": 557,
       "name": "К-Игнея и город Джасперлейн",
       "author": "@LizsBo",
