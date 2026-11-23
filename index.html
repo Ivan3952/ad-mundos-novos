@@ -130,6 +130,19 @@
   #arrival { position:fixed; inset:0; display:grid; align-items:end; pointer-events:auto; }
   #arrival[hidden] { display:none; }
   #arrival button { justify-self:center; margin-bottom:max(26px,env(safe-area-inset-bottom)); pointer-events:auto; color:#f8f3ec; background:#10111edb; border:1px solid #65566c; border-radius:24px; padding:11px 19px; font:13px system-ui; cursor:pointer; }
+
+    #eria-scene { position:fixed; inset:0; box-sizing:border-box; width:100%; height:100%; max-width:none; max-height:none; margin:0; padding:0; border:0; background:#000; color:#eeedf7; }
+    #eria-scene[open] { display:grid; place-items:center; animation:eria-dark .5s ease-in both; }
+    #eria-scene::backdrop { background:transparent; }
+    #eria-scene figure { margin:0; text-align:center; }
+    #eria-planet { width:min(70vw,50vh,520px); aspect-ratio:1; display:grid; place-items:center; margin:auto; border-radius:50%; box-shadow:0 0 1px #bbb7d3; }
+    #eria-planet img { width:100%; height:100%; object-fit:contain; border-radius:50%; animation:eria-dark 1s .4s both; }
+    #eria-scene figcaption { margin-top:1.6rem; font:italic clamp(18px,3vw,26px) Georgia,serif; animation:eria-dark .9s .9s both; }
+    #eria-scene h2 { position:absolute; top:20px; left:5vw; font:normal clamp(15px,3vw,22px) Georgia,serif; }
+    #eria-back { position:absolute; bottom:max(24px,env(safe-area-inset-bottom)); }
+    #eria-back,#eria-enter { padding:.65em 1em; border:1px solid #555269; border-radius:8px; color:#efeaf8; background:#12121b; cursor:pointer; }
+    @keyframes eria-dark { from { opacity:0 } to { opacity:1 } }
+    @media(prefers-reduced-motion:reduce) { #eria-scene[open],#eria-planet img,#eria-scene figcaption { animation:none; } }
 </style>
 </head>
 <body>
@@ -150,6 +163,11 @@
   <label for="world-picker">Планеты</label>
   <select id="world-picker"><option value="">Вся галактика</option></select>
 </div>
+<dialog id="eria-scene" aria-labelledby="eria-title">
+  <h2 id="eria-title">По ту сторону · Вселенная Эрия</h2>
+  <figure><div id="eria-planet"><img src="img/w235.jpg" alt="Колыбель под Вуалью Звёзд"></div><figcaption>Приятного сна, Эрия.</figcaption></figure>
+  <button id="eria-back" type="button">Вернуться в атлас</button>
+</dialog>
 <div id="card">
   <button class="cover" id="ccover" type="button" aria-label="Открыть иллюстрацию планеты"></button>
   <button class="close" id="cclose">×</button>
@@ -157,6 +175,7 @@
   <div class="author" id="cauthor"></div>
   <div class="group" id="cgroup"></div>
   <div class="group" id="clocation"></div>
+  <button id="eria-enter" type="button" hidden>Пройти через чёрную дыру</button>
   <section id="tour-stop" aria-label="Остановка экскурсии" hidden>
     <strong id="tour-position"></strong>
     <p id="tour-lore"></p>
@@ -680,13 +699,30 @@
   closeNote.onclick = () => dismissNote(true);
 
   const planetsById = new Map(P.map(p => [p.id, p]));
+  const eriaScene = document.getElementById("eria-scene");
+  const eriaEnter = document.getElementById("eria-enter");
+  const portalSprite = makeLandmark({kind:"black-hole"});
+  function enterEria() {
+    if (eriaScene.open) return;
+    const p = planetsById.get("w235");
+    const [x,y] = toScreen(p.x,p.y);
+    if (!reducedMotion.matches) {
+      cv.style.transformOrigin = x+"px "+y+"px";
+      cv.animate([{transform:"scale(1)"},{transform:"scale(.08)",opacity:0}], {duration:500,easing:"ease-in"});
+    }
+    eriaScene.showModal();
+  }
+  eriaEnter.onclick = enterEria;
+  document.getElementById("eria-back").onclick = () => eriaScene.close();
+  eriaScene.addEventListener("close", () => { needsDraw = true; cancelAnimationFrame(drawFrame); drawFrame = requestAnimationFrame(draw); });
   const landmarks = (G.landmarks || []).map(mark => {
     const planet = planetsById.get(mark.planet);
     const button = document.createElement("button");
     button.className = "landmark";
-    button.textContent = mark.label;
+    button.textContent = mark.planet === "w235" ? "Чёрная дыра · вход в Эрию" : mark.label;
     button.hidden = true;
     button.onclick = () => {
+      if (mark.planet === "w235") { enterEria(); return; }
       openMark = button;
       document.getElementById("landmark-title").textContent = mark.label;
       document.getElementById("landmark-description").textContent = mark.description;
@@ -901,8 +937,11 @@
       width * scale, height * scale, left, top, width, height);
   }
 
+  let drawFrame = 0;
   function draw(time) {
-    requestAnimationFrame(draw);
+    if (eriaScene.open) return;
+    cancelAnimationFrame(drawFrame);
+    drawFrame = requestAnimationFrame(draw);
     let progress = 1;
     if (deepField) {
       arrivalStart ??= time;
@@ -976,16 +1015,17 @@
       ctx.globalCompositeOperation = "lighter";
       const dimmed = selected >= 0 && i !== selected;
       const arrivalAlpha = deepField ? (progress - 0.70) / 0.30 : 1;
-      if (w >= 36) {
+      if (p.id !== "w235" && w >= 36) {
         const art = p.scene ??= makePlanetLayer(p);
         ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.22 : i === selected ? 1 : i === hovered ? 0.92 : 0.78);
         ctx.drawImage(art, sx - halo, sy - halo, halo * 2, halo * 2);
       }
       ctx.globalAlpha = arrivalAlpha * (dimmed ? 0.55 : 1);
       ctx.globalCompositeOperation = "screen";
-      ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
+      if (p.id === "w235") ctx.drawImage(portalSprite, sx - w / 2, sy - w / 2, w, w);
+      else ctx.drawImage(p.im, sx - w / 2, sy - h / 2, w, h);
       ctx.globalAlpha = 1;
-      if (i === fxFocus && fxA > 0 && p.fx.length) {
+      if (p.id !== "w235" && i === fxFocus && fxA > 0 && p.fx.length) {
         animated = true;
         drawFx(p, sx, sy, w, time, fxA);
       }
@@ -1100,6 +1140,7 @@
     if (!onTour) endTour();
     dismissNote();
     selected = i;
+    eriaEnter.hidden = P[i]?.id !== "w235";
     picker.value = i < 0 ? "" : String(i);
     if (i < 0) { card.classList.remove("open"); history.replaceState(null, "", location.pathname); return; }
     const p = P[i];
@@ -1197,7 +1238,7 @@
     if (ptrs.size < 2) pinch = null;
     if (ptrs.size === 0) {
       cv.classList.remove("drag");
-      if (moved < 6) { const i = hit(e.clientX, e.clientY); if (i >= 0) select(i); else if (selected >= 0) select(-1); }
+      if (moved < 6) { const i = hit(e.clientX, e.clientY); if (P[i]?.id === "w235") enterEria(); else if (i >= 0) select(i); else if (selected >= 0) select(-1); }
     }
   };
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
@@ -1209,6 +1250,7 @@
     zoomBy(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
   }, { passive: false });
   addEventListener("keydown", e => {
+    if (eriaScene.open) return;
     if (deepField && e.key === "Escape") { finishArrival(); return; }
     if (e.key === "Escape" && !landmarkNote.hidden) { dismissNote(true); return; }
     if (e.target === picker) return;
